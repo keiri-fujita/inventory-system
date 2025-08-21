@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>入庫・出庫フォーム</title>
+</head>
+<body>
+  <h1>入庫</h1>
+  <form action="/add" method="post">
+    商品ID: <input type="text" name="item_id" required><br>
+    商品名: <input type="text" name="name" required><br>
+    数量: <input type="number" name="quantity" required><br>
+    場所:
+    <select name="location" required>
+      {% for loc in locations %}
+      <option value="{{ loc }}">{{ loc }}</option>
+      {% endfor %}
+    </select><br>
+    <button type="submit">入庫する</button>
+  </form>
+
+  <h1>出庫</h1>
+  <form action="/remove" method="post">
+    商品ID: <input type="text" name="item_id" required><br>
+    数量: <input type="number" name="quantity" required><br>
+    場所:
+    <select name="location" required>
+      {% for loc in locations %}
+      <option value="{{ loc }}">{{ loc }}</option>
+      {% endfor %}
+    </select><br>
+    理由（メモ）: <input type="text" name="memo"><br>
+    <button type="submit">出庫する</button>
+  </form>
+
+  <br>
+  <a href="/">戻る</a>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ base_name }}の在庫</title>
+  <style>
+    body {
+      font-size: 13px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 12px;
+      max-height: 70vh;
+      overflow-y: auto;
+      display: block;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 4px 8px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    th.sortable {
+      cursor: pointer;
+    }
+    thead tr:first-child th {
+      position: sticky;
+      top: 0;
+      background-color: #ccf0ff; /* 水色 */
+      z-index: 3;
+    }
+    thead tr:nth-child(2) th {
+      position: sticky;
+      top: 28px;
+      background-color: #fff;
+      z-index: 2;
+    }
+    tbody tr:hover {
+     background-color: #fffacd; /* 薄い黄色 */
+     font-weight: bold;
+     transition: all 0.2s ease;
+    }
+    select {
+      font-size: 11px;
+      width: 100%;
+    }
+    .sort-icon {
+      margin-left: 4px;
+      font-size: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>{{ base_name }}の在庫</h1>
+
+  <form method="post">
+    <button type="submit">✅ チェックしたものを出庫する</button>
+
+    <br><br> <!-- 空白行 -->
+
+    <table id="inventoryTable">
+      <thead>
+        <tr>
+          <th>出庫</th>
+          {% for i in range(1, 13) %}
+          <th class="sortable" onclick="sortTable({{ i }}, this)">
+            {{ headers[i] }}<span class="sort-icon">▼</span>
+          </th>
+          {% endfor %}
+        </tr>
+        <tr>
+          <th>
+            <select onchange="applyAllFilters()" data-col="0">
+              <option value="">すべて</option>
+              <option value="✔️">✔️</option>
+              <option value="（空）">（空）</option>
+            </select>
+          </th>
+          {% for i in range(1, 13) %}
+          <th>
+            <select onchange="applyAllFilters()" data-col="{{ i }}">
+              <option value="">すべて</option>
+            </select>
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for i, row in enumerate(rows) %}
+        <tr>
+          <td><input type="checkbox" name="checkout" value="{{ i }}"></td>
+          {% for cell in row[2:14] %}
+          <td>{{ cell }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </form>
+
+  <p><a href="/">← 戻る</a></p>
+
+  <script>
+    let sortOrder = {};
+
+    function sortTable(colIndex, headerCell) {
+      const table = document.getElementById("inventoryTable");
+      const tbody = table.tBodies[0];
+      const rows = Array.from(tbody.rows);
+
+      if (colIndex === 0) return;
+
+      sortOrder[colIndex] = !sortOrder[colIndex];
+
+      rows.sort((a, b) => {
+        const A = a.cells[colIndex].innerText.trim();
+        const B = b.cells[colIndex].innerText.trim();
+
+        const numA = parseFloat(A.replace(/,/g, ""));
+        const numB = parseFloat(B.replace(/,/g, ""));
+
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return sortOrder[colIndex] ? numA - numB : numB - numA;
+        }
+        return sortOrder[colIndex]
+          ? A.localeCompare(B, 'ja')
+          : B.localeCompare(A, 'ja');
+      });
+
+      rows.forEach(row => tbody.appendChild(row));
+
+      document.querySelectorAll(".sort-icon").forEach(icon => icon.textContent = "▼");
+      headerCell.querySelector(".sort-icon").textContent = sortOrder[colIndex] ? "▲" : "▼";
+    }
+
+    window.onload = function () {
+      const table = document.getElementById("inventoryTable");
+      const tbody = table.tBodies[0];
+      const selects = table.querySelectorAll("thead tr:nth-child(2) select");
+
+      selects.forEach((select, idx) => {
+        const colIndex = parseInt(select.dataset.col);
+        const values = new Set();
+
+        Array.from(tbody.rows).forEach(row => {
+          let value;
+          if (colIndex === 0) {
+            value = row.cells[colIndex].querySelector('input').checked ? "✔️" : "（空）";
+          } else {
+            value = row.cells[colIndex].innerText.trim();
+          }
+          if (value) values.add(value);
+        });
+
+        Array.from(values).sort().forEach(v => {
+          const option = document.createElement("option");
+          option.value = v;
+          option.textContent = v;
+          select.appendChild(option);
+        });
+      });
+    };
+
+    function applyAllFilters() {
+      const table = document.getElementById("inventoryTable");
+      const tbody = table.tBodies[0];
+      const selects = table.querySelectorAll("thead tr:nth-child(2) select");
+
+      Array.from(tbody.rows).forEach(row => {
+        let visible = true;
+
+        selects.forEach(select => {
+          const col = parseInt(select.dataset.col);
+          const value = select.value;
+
+          if (!value) return;
+
+          let cellValue;
+          if (col === 0) {
+            cellValue = row.cells[col].querySelector('input').checked ? "✔️" : "（空）";
+          } else {
+            cellValue = row.cells[col].innerText.trim();
+          }
+
+          if (cellValue !== value) visible = false;
+        });
+
+        row.style.display = visible ? "" : "none";
+      });
+    }
+  </script>
+</body>
+</html>

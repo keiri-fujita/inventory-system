@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>在庫管理トップ</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 2em;
+    }
+    a {
+      display: block;
+      margin: 1em 0;
+      font-size: 1.2em;
+      text-decoration: none;
+      color: #2c3e50;
+    }
+  </style>
+</head>
+<body>
+  <h1>在庫管理トップ</h1>
+  <a href="/inventory_all">全拠点の在庫一覧</a>
+  <a href="/log">入出庫ログを見る</a>
+  <a href="/add_stock">在庫を追加（入庫）</a>
+  <h2>各拠点の在庫を見る</h2>
+  <ul>
+    {% for base in base_names %}
+      <li><a href="{{ url_for('inventory', base_name=base) }}">{{ base }}</a></li>
+    {% endfor %}
+  </ul>
+</body>
+</html>

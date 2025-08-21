@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>在庫を追加</title>
+  <style>
+    label {
+      display: block;
+      margin-top: 8px;
+    }
+    input, select {
+      padding: 4px;
+      width: 300px;
+    }
+    .submit-btn {
+      margin-top: 1em;
+    }
+  </style>
+</head>
+<body>
+  <h1>在庫を追加（入庫）</h1>
+  <form method="post">
+    <label>拠点:
+      <select name="拠点" required>
+        {% for base in base_names %}
+          <option value="{{ base }}">{{ base }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% for h in headers[2:-1] %}  {# 「下代（数値）」は別扱い #}
+      <label>{{ h }}: <input type="text" name="{{ h }}"></label>
+    {% endfor %}
+    <label class="hidden">下代（数値）: <input type="text" name="下代（数値）"></label>
+    <button class="submit-btn" type="submit">✅ 入庫を確定</button>
+  </form>
+  <p><a href="/">← 戻る</a></p>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>全拠点の在庫一覧</title>
+  <style>
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 4px 8px;
+      text-align: center;
+    }
+    thead th {
+      position: sticky;
+      top: 0;
+      background-color: #f9f9f9;
+      z-index: 2;
+    }
+  </style>
+</head>
+<body>
+  <h1>全拠点の在庫一覧</h1>
+  <table>
+<thead>
+  <tr>
+    <th>拠点</th>
+    {% for h in headers[2:-1] %}  {# 「出庫」除く、下代（数値）は最後に除外 #}
+      <th>{{ h }}</th>
+    {% endfor %}
+  </tr>
+</thead>
+  <tbody>
+   {% for row in rows %}
+     <tr>
+       <td>{{ row[0] }}</td>  {# 拠点名 #}
+       {% for cell in row[3:-1] %}  {# 地金～入庫日 #}
+         <td>{{ cell }}</td>
+       {% endfor %}
+    </tr>
+   {% endfor %}
+  </tbody>
+
+  </table>
+  <p><a href="/">← 戻る</a></p>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>入出庫ログ</title>
+  <style>
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 1em;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 4px 8px;
+      text-align: center;
+    }
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #eee;
+      z-index: 2;
+    }
+  </style>
+</head>
+<body>
+  <h1>入出庫ログ</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>処理</th>
+        {% for h in headers %}
+          <th>{{ h }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr>
+          {% for cell in row %}
+            <td>{{ cell }}</td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p><a href="/">← 戻る</a></p>
+</body>
+</html>

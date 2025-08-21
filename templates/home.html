@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}在庫管理 - 拠点選択{% endblock %}
+
+{% block content %}
+<div class="menu">
+  <h1>在庫管理システム</h1>
+  <p>拠点を選んでください：</p>
+  <ul>
+    {% for location in locations %}
+      <li><a href="{{ url_for('inventory', location=location) }}">{{ location }}</a></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}
