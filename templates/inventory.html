@@ -1,194 +1,293 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>{{ base_name }}の在庫</title>
-  <style>
-    body {
-      font-size: 13px;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      font-size: 12px;
-      max-height: 70vh;
-      overflow-y: auto;
-      display: block;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 4px 8px;
-      text-align: center;
-      white-space: nowrap;
-    }
-    th.sortable {
-      cursor: pointer;
-    }
-    thead tr:first-child th {
-      position: sticky;
-      top: 0;
-      background-color: #ccf0ff; /* 水色 */
-      z-index: 3;
-    }
-    thead tr:nth-child(2) th {
-      position: sticky;
-      top: 28px;
-      background-color: #fff;
-      z-index: 2;
-    }
-    tbody tr:hover {
-     background-color: #fffacd; /* 薄い黄色 */
-     font-weight: bold;
-     transition: all 0.2s ease;
-    }
-    select {
-      font-size: 11px;
-      width: 100%;
-    }
-    .sort-icon {
-      margin-left: 4px;
-      font-size: 10px;
-    }
-  </style>
+<meta charset="UTF-8" />
+<title>{{ base_name }}の在庫</title>
+<style>
+body { font-size: 13px; }
+
+/* ✅ 検索バー右横に自然配置 */
+.summary-wrap {
+  position: relative;
+  margin: -35px auto 0 auto; /* ← 上に持ち上げる */
+  width: fit-content;
+}
+
+/* 集計テーブル */
+.summary {
+  font-size: 12px;
+  border-collapse: collapse;
+  background: #fff;
+  line-height: 1.1;
+}
+
+.summary th,
+.summary td {
+  border: 1px solid #ccc;
+  padding: 1px 4px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.summary thead th {
+  text-align: center;
+  background-color: #ffe6ea !important;
+  font-weight: bold;
+}
+
+.summary tbody tr:hover {
+  background: none;
+  font-weight: normal;
+  transition: none;
+}
+
+/* 在庫テーブル */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+  max-height: 70vh;
+  overflow-y: auto;
+  display: block;
+}
+th, td {
+  border: 1px solid #ccc;
+  padding: 4px 8px;
+  text-align: center;
+  white-space: nowrap;
+}
+th.sortable { cursor: pointer; }
+
+thead tr:first-child th {
+  position: sticky;
+  top: 0;
+  background-color: #ccf0ff;
+  z-index: 3;
+}
+thead tr:nth-child(2) th {
+  position: sticky;
+  top: 28px;
+  background: #fff;
+  z-index: 2;
+}
+
+tbody tr:hover {
+  background-color: #fffacd;
+  font-weight: bold;
+  transition: all .2s ease;
+}
+
+select { font-size: 11px; width: 100%; }
+.sort-icon { margin-left: 4px; font-size: 10px; }
+</style>
 </head>
 <body>
-  <h1>{{ base_name }}の在庫</h1>
+<h1>{{ base_name }}の在庫</h1>
 
-  <form method="post">
-    <button type="submit">✅ チェックしたものを出庫する</button>
+<form method="post">
 
-    <br><br> <!-- 空白行 -->
+  <!-- ✅ 外枠（全体をflexで左右配置） -->
+<div style="
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding-right: 40px;   /* ← 右端の余白をとる */
+">
 
-    <table id="inventoryTable">
+  <!-- 左側（出庫ボタン＋検索） -->
+  <div style="display: flex; align-items: center; gap: 12px; margin-top: 50px;">
+  <button type="submit" style="white-space: nowrap;">✅ チェックしたものを出庫する</button>
+  <input
+    type="text"
+    id="searchBox"
+    placeholder="キーワード検索（例：品番・金額など）"
+    style="padding: 4px; font-size: 12px; width: 250px;"
+  />
+  <span id="countLabel" style="font-size: 12px; white-space: nowrap;">表示件数：0 / 総件数：0</span>
+</div>
+
+
+  <!-- 右側（集計表） -->
+  <div class="summary-wrap">
+    {% set cats = ["リング","ペンダント","チェーン","その他"] %}
+    <table class="summary" aria-label="在庫集計">
       <thead>
         <tr>
-          <th>出庫</th>
-          {% for i in range(1, 13) %}
-          <th class="sortable" onclick="sortTable({{ i }}, this)">
-            {{ headers[i] }}<span class="sort-icon">▼</span>
-          </th>
-          {% endfor %}
-        </tr>
-        <tr>
-          <th>
-            <select onchange="applyAllFilters()" data-col="0">
-              <option value="">すべて</option>
-              <option value="✔️">✔️</option>
-              <option value="（空）">（空）</option>
-            </select>
-          </th>
-          {% for i in range(1, 13) %}
-          <th>
-            <select onchange="applyAllFilters()" data-col="{{ i }}">
-              <option value="">すべて</option>
-            </select>
-          </th>
-          {% endfor %}
+          <th>アイテム</th><th>数量</th><th>上代</th><th>下代</th>
         </tr>
       </thead>
       <tbody>
-        {% for i, row in enumerate(rows) %}
+        {% for c in cats %}
         <tr>
-          <td><input type="checkbox" name="checkout" value="{{ i }}"></td>
-          {% for cell in row[2:14] %}
-          <td>{{ cell }}</td>
-          {% endfor %}
+          <td>{{ c }}</td>
+          <td>{{ summary[c]["count"] }}</td>
+          <td>{{ summary[c]["上代"] }}</td>
+          <td>{{ summary[c]["下代"] }}</td>
         </tr>
         {% endfor %}
+        <tr style="font-weight:700;">
+          <td>合計</td>
+          <td>{{ (totals.count | default(total_count)) }}</td>
+          <td>{{ (totals["上代"] | default(total_上代)) }}</td>
+          <td>{{ (totals["下代"] | default(total_下代)) }}</td>
+        </tr>
       </tbody>
     </table>
-  </form>
+  </div>
+</div>
 
-  <p><a href="/">← 戻る</a></p>
 
-  <script>
-    let sortOrder = {};
+  <table id="inventoryTable">
+    <thead>
+      <tr>
+        <th>出庫</th>
+        {% for i in range(1,13) %}
+          <th class="sortable" onclick="sortTable({{ i }}, this)">
+            {{ headers[i] }}<span class="sort-icon">▼</span>
+          </th>
+        {% endfor %}
+      </tr>
+      <tr>
+        <th>
+          <select onchange="applyAllFilters()" data-col="0">
+            <option value="">すべて</option>
+            <option value="✔️">✔️</option>
+            <option value="（空）">（空）</option>
+          </select>
+        </th>
+        {% for i in range(1,13) %}
+        <th>
+          <select onchange="applyAllFilters()" data-col="{{ i }}">
+            <option value="">すべて</option>
+          </select>
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
 
-    function sortTable(colIndex, headerCell) {
-      const table = document.getElementById("inventoryTable");
-      const tbody = table.tBodies[0];
-      const rows = Array.from(tbody.rows);
+    <tbody>
+      {% for i, row in enumerate(rows) %}
+      <tr>
+        <td><input type="checkbox" name="checkout" value="{{ i }}"></td>
+        {% for cell in row[2:14] %}
+          <td>{{ cell }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</form>
 
-      if (colIndex === 0) return;
+<p><a href="/">← 戻る</a></p>
 
-      sortOrder[colIndex] = !sortOrder[colIndex];
+<script>
+let inventoryData = [];
+let sortOrder = {};
+let searchTimeout;
 
-      rows.sort((a, b) => {
-        const A = a.cells[colIndex].innerText.trim();
-        const B = b.cells[colIndex].innerText.trim();
+window.onload = function () {
+  const table = document.getElementById("inventoryTable");
+  const tbody = table.tBodies[0];
+  const selects = table.querySelectorAll("thead tr:nth-child(2) select");
 
-        const numA = parseFloat(A.replace(/,/g, ""));
-        const numB = parseFloat(B.replace(/,/g, ""));
+  inventoryData = Array.from(tbody.rows).map(row =>
+    Array.from(row.cells).map(cell => cell.innerText.trim())
+  );
 
-        if (!isNaN(numA) && !isNaN(numB)) {
-          return sortOrder[colIndex] ? numA - numB : numB - numA;
-        }
-        return sortOrder[colIndex]
-          ? A.localeCompare(B, 'ja')
-          : B.localeCompare(A, 'ja');
-      });
+  selects.forEach(select => {
+    const colIndex = parseInt(select.dataset.col);
+    const values = new Set(inventoryData.map(row => row[colIndex]).filter(v => v));
+    Array.from(values).sort().forEach(v => {
+      const option = document.createElement("option");
+      option.value = v;
+      option.textContent = v;
+      select.appendChild(option);
+    });
+  });
 
-      rows.forEach(row => tbody.appendChild(row));
+  updateCountLabel();
+};
 
-      document.querySelectorAll(".sort-icon").forEach(icon => icon.textContent = "▼");
-      headerCell.querySelector(".sort-icon").textContent = sortOrder[colIndex] ? "▲" : "▼";
+function searchTable() {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => applyFiltersAndSearch(), 400);
+}
+
+function renderTable(rows) {
+  const tbody = document.querySelector("#inventoryTable tbody");
+  tbody.innerHTML = rows.map((row, i) => {
+    const checkbox = `<td><input type="checkbox" name="checkout" value="${i}"></td>`;
+    const cells = row.slice(1, 15).map(c => `<td>${c}</td>`).join("");
+    return `<tr>${checkbox}${cells}</tr>`;
+  }).join("");
+  updateCountLabel();
+}
+
+function updateCountLabel() {
+  const tbody = document.querySelector("#inventoryTable tbody");
+  const total = inventoryData.length;
+  const visible = tbody.querySelectorAll("tr").length;
+  document.getElementById("countLabel").textContent =
+    `表示件数：${visible} / 総件数：${total}`;
+}
+
+// === フィルタ＋検索（AND条件） ===
+function applyFiltersAndSearch() {
+  const selects = document.querySelectorAll("thead tr:nth-child(2) select");
+  const searchValue = document.getElementById("searchBox").value.trim().toLowerCase();
+  const searchWords = searchValue.split(/\s+/).filter(w => w);
+
+  let filtered = inventoryData.filter(row => {
+    // 各列のフィルタ適用
+    for (const select of selects) {
+      const col = parseInt(select.dataset.col);
+      const val = select.value.trim().toLowerCase();
+      if (val && !row[col].toLowerCase().includes(val)) return false;
     }
 
-    window.onload = function () {
-      const table = document.getElementById("inventoryTable");
-      const tbody = table.tBodies[0];
-      const selects = table.querySelectorAll("thead tr:nth-child(2) select");
-
-      selects.forEach((select, idx) => {
-        const colIndex = parseInt(select.dataset.col);
-        const values = new Set();
-
-        Array.from(tbody.rows).forEach(row => {
-          let value;
-          if (colIndex === 0) {
-            value = row.cells[colIndex].querySelector('input').checked ? "✔️" : "（空）";
-          } else {
-            value = row.cells[colIndex].innerText.trim();
-          }
-          if (value) values.add(value);
-        });
-
-        Array.from(values).sort().forEach(v => {
-          const option = document.createElement("option");
-          option.value = v;
-          option.textContent = v;
-          select.appendChild(option);
-        });
-      });
-    };
-
-    function applyAllFilters() {
-      const table = document.getElementById("inventoryTable");
-      const tbody = table.tBodies[0];
-      const selects = table.querySelectorAll("thead tr:nth-child(2) select");
-
-      Array.from(tbody.rows).forEach(row => {
-        let visible = true;
-
-        selects.forEach(select => {
-          const col = parseInt(select.dataset.col);
-          const value = select.value;
-
-          if (!value) return;
-
-          let cellValue;
-          if (col === 0) {
-            cellValue = row.cells[col].querySelector('input').checked ? "✔️" : "（空）";
-          } else {
-            cellValue = row.cells[col].innerText.trim();
-          }
-
-          if (cellValue !== value) visible = false;
-        });
-
-        row.style.display = visible ? "" : "none";
-      });
+    // ✅ 検索語のAND条件（カンマ除去対応）
+    if (searchWords.length > 0) {
+      // 各行の文字列をカンマ除去して比較
+      const rowText = row.join(" ").toLowerCase().replace(/,/g, "");
+      for (const w of searchWords) {
+        const cleanWord = w.replace(/,/g, ""); // ← 検索語側もカンマ除去
+        if (!rowText.includes(cleanWord)) return false;
+      }
     }
-  </script>
+
+    return true;
+  });
+
+  renderTable(filtered);
+}
+
+function sortTable(colIndex, headerCell) {
+  if (colIndex === 0) return;
+  sortOrder[colIndex] = !sortOrder[colIndex];
+
+  inventoryData.sort((a, b) => {
+    const A = a[colIndex].replace(/,/g, "");
+    const B = b[colIndex].replace(/,/g, "");
+    const numA = parseFloat(A);
+    const numB = parseFloat(B);
+
+    if (!isNaN(numA) && !isNaN(numB))
+      return sortOrder[colIndex] ? numA - numB : numB - numA;
+
+    return sortOrder[colIndex]
+      ? A.localeCompare(B, "ja")
+      : B.localeCompare(A, "ja");
+  });
+
+  document.querySelectorAll(".sort-icon").forEach(i => i.textContent = "▼");
+  headerCell.querySelector(".sort-icon").textContent = sortOrder[colIndex] ? "▲" : "▼";
+
+  applyFiltersAndSearch();
+}
+
+document.getElementById("searchBox").addEventListener("input", searchTable);
+</script>
 </body>
 </html>

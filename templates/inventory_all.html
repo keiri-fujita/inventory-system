@@ -1,49 +1,272 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>全拠点の在庫一覧</title>
-  <style>
-    table {
-      border-collapse: collapse;
-      width: 100%;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 4px 8px;
-      text-align: center;
-    }
-    thead th {
-      position: sticky;
-      top: 0;
-      background-color: #f9f9f9;
-      z-index: 2;
-    }
-  </style>
+<meta charset="UTF-8" />
+<title>全拠点の在庫一覧</title>
+<style>
+body { font-size: 13px; }
+
+/* ✅ 検索バー右横に自然配置 */
+.summary-wrap {
+  position: relative;
+  margin: -35px auto 0 auto;
+  width: fit-content;
+}
+
+/* 集計テーブル */
+.summary {
+  font-size: 12px;
+  border-collapse: collapse;
+  background: #fff;
+  line-height: 1.1;
+}
+
+.summary th,
+.summary td {
+  border: 1px solid #ccc;
+  padding: 1px 4px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.summary thead th {
+  text-align: center;
+  background-color: #ffe6ea !important;
+  font-weight: bold;
+}
+
+.summary tbody tr:hover {
+  background: none;
+  font-weight: normal;
+  transition: none;
+}
+
+/* 在庫テーブル */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+  max-height: 70vh;
+  overflow-y: auto;
+  display: block;
+}
+th, td {
+  border: 1px solid #ccc;
+  padding: 4px 8px;
+  text-align: center;
+  white-space: nowrap;
+}
+th.sortable { cursor: pointer; }
+
+thead tr:first-child th {
+  position: sticky;
+  top: 0;
+  background-color: #ccf0ff;
+  z-index: 3;
+}
+thead tr:nth-child(2) th {
+  position: sticky;
+  top: 28px;
+  background: #fff;
+  z-index: 2;
+}
+
+tbody tr:hover {
+  background-color: #fffacd;
+  font-weight: bold;
+  transition: all .2s ease;
+}
+
+select { font-size: 11px; width: 100%; }
+.sort-icon { margin-left: 4px; font-size: 10px; }
+</style>
 </head>
 <body>
-  <h1>全拠点の在庫一覧</h1>
-  <table>
-<thead>
-  <tr>
-    <th>拠点</th>
-    {% for h in headers[2:-1] %}  {# 「出庫」除く、下代（数値）は最後に除外 #}
-      <th>{{ h }}</th>
-    {% endfor %}
-  </tr>
-</thead>
-  <tbody>
-   {% for row in rows %}
-     <tr>
-       <td>{{ row[0] }}</td>  {# 拠点名 #}
-       {% for cell in row[3:-1] %}  {# 地金～入庫日 #}
-         <td>{{ cell }}</td>
-       {% endfor %}
-    </tr>
-   {% endfor %}
-  </tbody>
+<h1>全拠点の在庫一覧</h1>
 
-  </table>
-  <p><a href="/">← 戻る</a></p>
+<!-- ✅ 外枠（flexで検索と集計を左右に並べる） -->
+<div style="
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding-right: 40px;
+">
+
+  <!-- 左側（検索バー＋件数） -->
+  <div style="display: flex; align-items: center; gap: 12px; margin-top: 50px;">
+    <input
+      type="text"
+      id="searchBox"
+      placeholder="キーワード検索（例：拠点名・品番・金額など）"
+      style="padding: 4px; font-size: 12px; width: 250px;"
+    />
+    <span id="countLabel" style="font-size: 12px; white-space: nowrap;">表示件数：0 / 総件数：0</span>
+  </div>
+
+  <!-- 右側（集計表） -->
+  <div class="summary-wrap">
+    {% set cats = ["リング","ペンダント","チェーン","その他"] %}
+    <table class="summary" aria-label="全体集計">
+      <thead>
+        <tr>
+          <th>アイテム</th><th>数量</th><th>上代</th><th>下代</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in cats %}
+        <tr>
+          <td>{{ c }}</td>
+          <td>{{ summary[c]["count"] }}</td>
+          <td>{{ summary[c]["上代"] }}</td>
+          <td>{{ summary[c]["下代"] }}</td>
+        </tr>
+        {% endfor %}
+        <tr style="font-weight:700;">
+          <td>合計</td>
+          <td>{{ totals.count }}</td>
+          <td>{{ totals["上代"] }}</td>
+          <td>{{ totals["下代"] }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- === メインテーブル === -->
+<table id="inventoryTable">
+  <thead>
+    <tr>
+      {% for h in headers %}
+        <th class="sortable" onclick="sortTable({{ loop.index0 }}, this)">
+          {{ h }}<span class="sort-icon">▼</span>
+        </th>
+      {% endfor %}
+    </tr>
+    <tr>
+      {% for col in headers %}
+        <th>
+          <select onchange="applyAllFilters()" data-col="{{ loop.index0 }}">
+            <option value="">すべて</option>
+          </select>
+        </th>
+      {% endfor %}
+    </tr>
+  </thead>
+
+  <tbody>
+    {% for row in rows %}
+    <tr>
+      {% for cell in row[:13] %}
+        <td>{{ cell }}</td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p><a href="/">← 戻る</a></p>
+
+<script>
+let inventoryData = [];
+let sortOrder = {};
+let searchTimeout;
+
+window.onload = function () {
+  const table = document.getElementById("inventoryTable");
+  const tbody = table.tBodies[0];
+  const selects = table.querySelectorAll("thead tr:nth-child(2) select");
+
+  inventoryData = Array.from(tbody.rows).map(row =>
+    Array.from(row.cells).map(cell => cell.innerText.trim())
+  );
+
+  selects.forEach(select => {
+    const colIndex = parseInt(select.dataset.col);
+    const values = new Set(inventoryData.map(row => row[colIndex]).filter(v => v));
+    Array.from(values).sort().forEach(v => {
+      const option = document.createElement("option");
+      option.value = v;
+      option.textContent = v;
+      select.appendChild(option);
+    });
+  });
+
+  updateCountLabel();
+};
+
+function searchTable() {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => applyFiltersAndSearch(), 400);
+}
+
+function renderTable(rows) {
+  const tbody = document.querySelector("#inventoryTable tbody");
+  tbody.innerHTML = rows.map(row =>
+    `<tr>${row.map(c => `<td>${c}</td>`).join("")}</tr>`
+  ).join("");
+  updateCountLabel();
+}
+
+function updateCountLabel() {
+  const tbody = document.querySelector("#inventoryTable tbody");
+  const total = inventoryData.length;
+  const visible = tbody.querySelectorAll("tr").length;
+  document.getElementById("countLabel").textContent =
+    `表示件数：${visible} / 総件数：${total}`;
+}
+
+function applyFiltersAndSearch() {
+  const selects = document.querySelectorAll("thead tr:nth-child(2) select");
+  const searchValue = document.getElementById("searchBox").value.trim().toLowerCase();
+  const searchWords = searchValue.split(/\s+/).filter(w => w);
+
+  const filtered = inventoryData.filter(row => {
+    for (const select of selects) {
+      const col = parseInt(select.dataset.col);
+      const val = select.value.trim().toLowerCase();
+      if (val && !row[col].toLowerCase().includes(val)) return false;
+    }
+
+    if (searchWords.length > 0) {
+      const rowText = row.join(" ").toLowerCase().replace(/,/g, "");
+      for (const w of searchWords) {
+        const cleanWord = w.replace(/,/g, "");
+        if (!rowText.includes(cleanWord)) return false;
+      }
+    }
+
+    return true;
+  });
+
+  renderTable(filtered);
+}
+
+function sortTable(colIndex, headerCell) {
+  sortOrder[colIndex] = !sortOrder[colIndex];
+
+  inventoryData.sort((a, b) => {
+    const A = a[colIndex].replace(/,/g, "");
+    const B = b[colIndex].replace(/,/g, "");
+    const numA = parseFloat(A);
+    const numB = parseFloat(B);
+
+    if (!isNaN(numA) && !isNaN(numB))
+      return sortOrder[colIndex] ? numA - numB : numB - numA;
+
+    return sortOrder[colIndex]
+      ? A.localeCompare(B, "ja")
+      : B.localeCompare(A, "ja");
+  });
+
+  document.querySelectorAll(".sort-icon").forEach(i => i.textContent = "▼");
+  headerCell.querySelector(".sort-icon").textContent = sortOrder[colIndex] ? "▲" : "▼";
+
+  applyFiltersAndSearch();
+}
+
+document.getElementById("searchBox").addEventListener("input", searchTable);
+</script>
 </body>
 </html>
