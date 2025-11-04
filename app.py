@@ -58,37 +58,58 @@ def append_log(row, mode):
 
 
 def summarize_inventory(rows):
+    """行配列の形（単拠点/全拠点）に応じて列位置を切り替えて集計"""
     cats = ["リング", "ペンダント", "チェーン", "その他"]
     summary = {c: {"count": 0, "上代": 0, "下代": 0} for c in cats}
     totals = {"count": 0, "上代": 0, "下代": 0}
 
     for row in rows:
+        if not row:
+            continue
+
+        # --- 列インデックスを形に応じて決定 ---
+        # 単拠点: 長さ>=15（No.,出庫を含む）
+        # 全拠点: 長さ==13（先頭=地金）
+        if len(row) >= 15:
+            idx_item = 3   # アイテム
+            idx_up   = 7   # 上代
+            idx_down = 8   # 下代
+        elif len(row) == 13:
+            idx_item = 1   # アイテム
+            idx_up   = 5   # 上代
+            idx_down = 6   # 下代
+        else:
+            # 念のためのフォールバック（列数が想定外のときはスキップ）
+            continue
+
         try:
-            item = str(row[2])  # 「アイテム」列（例：リング枠など）
-            上代 = float(str(row[6]).replace(",", "") or 0)
-            下代 = float(str(row[7]).replace(",", "") or 0)
+            item = str(row[idx_item])
+            up_str = str(row[idx_up]).replace(",", "").strip()
+            dn_str = str(row[idx_down]).replace(",", "").strip()
+            up_val = float(up_str) if up_str else 0.0
+            dn_val = float(dn_str) if dn_str else 0.0
         except Exception:
             continue
 
-        # ✅ 部分一致・ゆるいマッチング対応
-        if any(k in item for k in ["リング", "RING", "Ring"]):
+        # カテゴリ判定（含まれていれば該当）
+        if "リング" in item:
             cat = "リング"
-        elif any(k in item for k in ["ペンダント", "PENDANT", "Pendant"]):
+        elif "ペンダント" in item:
             cat = "ペンダント"
-        elif any(k in item for k in ["チェーン", "CHAIN", "Chain"]):
+        elif "チェーン" in item:
             cat = "チェーン"
         else:
             cat = "その他"
 
         summary[cat]["count"] += 1
-        summary[cat]["上代"] += 上代
-        summary[cat]["下代"] += 下代
+        summary[cat]["上代"] += up_val
+        summary[cat]["下代"] += dn_val
 
         totals["count"] += 1
-        totals["上代"] += 上代
-        totals["下代"] += 下代
+        totals["上代"] += up_val
+        totals["下代"] += dn_val
 
-    # 桁区切り整形
+    # 表示整形
     for c in cats:
         summary[c]["上代"] = f"{summary[c]['上代']:,.0f}"
         summary[c]["下代"] = f"{summary[c]['下代']:,.0f}"
@@ -96,7 +117,6 @@ def summarize_inventory(rows):
     totals["下代"] = f"{totals['下代']:,.0f}"
 
     return summary, totals
-
 
 
 # === ルーティング ===

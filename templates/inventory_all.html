@@ -13,7 +13,7 @@ body { font-size: 13px; }
   width: fit-content;
 }
 
-/* 集計テーブル */
+/* === 集計テーブル === */
 .summary {
   font-size: 12px;
   border-collapse: collapse;
@@ -21,6 +21,7 @@ body { font-size: 13px; }
   line-height: 1.1;
 }
 
+/* 罫線や配置 */
 .summary th,
 .summary td {
   border: 1px solid #ccc;
@@ -29,10 +30,16 @@ body { font-size: 13px; }
   white-space: nowrap;
 }
 
+/* ✅ タイトル行を淡い黄緑に */
 .summary thead th {
   text-align: center;
-  background-color: #ffe6ea !important;
+  background-color: #e6ffe6 !important;
   font-weight: bold;
+}
+
+
+.summary tbody tr {
+  background-color: #fff;
 }
 
 .summary tbody tr:hover {
@@ -58,12 +65,15 @@ th, td {
 }
 th.sortable { cursor: pointer; }
 
+/* 1行目（列名行）を淡い紫に */
 thead tr:first-child th {
   position: sticky;
   top: 0;
-  background-color: #ccf0ff;
+  background-color: #f3e6ff;
   z-index: 3;
+  cursor: pointer;
 }
+/* 2行目（絞り込み用セレクト行）は白に */
 thead tr:nth-child(2) th {
   position: sticky;
   top: 28px;
@@ -72,10 +82,11 @@ thead tr:nth-child(2) th {
 }
 
 tbody tr:hover {
-  background-color: #fffacd;
+  background-color: #ffd8c2;  /* コーラルピンク */
   font-weight: bold;
-  transition: all .2s ease;
+  transition: all 0.2s ease;
 }
+
 
 select { font-size: 11px; width: 100%; }
 .sort-icon { margin-left: 4px; font-size: 10px; }
