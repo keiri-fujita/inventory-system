@@ -53,10 +53,9 @@ BASE_SLUGS = {
     "ateam": "Aチーム",
 }
 
-# ★ ここを追加（必ず左端から書く）
-def get_base_name_from_slug(base_slug: str):
-    """URL のスラッグから拠点名（日本語名）を取得する"""
-    return BASE_SLUGS.get(base_slug)
+# URL のスラッグ → 拠点名（例: "kobe" -> "神戸"）
+def get_base_name_from_slug(slug: str):
+    return BASE_SLUGS.get(slug)
 
 
 # 既存処理で使っている拠点名リスト（値だけ取り出す）
@@ -358,9 +357,11 @@ def print_base_inventory(base_name):
 def index():
     return render_template("index.html", bases=BASES)
 
-@app.route("/inventory/<base_name>", methods=["GET", "POST"])
-def inventory(base_name):
-    if base_name not in BASE_NAMES:
+@app.route("/inventory/<base_slug>", methods=["GET", "POST"])
+def inventory(base_slug):
+    # スラッグから拠点名に変換（例: "kobe" -> "神戸"）
+    base_name = get_base_name_from_slug(base_slug)
+    if not base_name:
         return "拠点が見つかりません", 404
 
     # 対象拠点の在庫を読み込み
@@ -384,6 +385,23 @@ def inventory(base_name):
         "No.", "地金", "アイテム", "中石", "サイズ", "品番",
         "上代", "下代", "脇石", "チェーン長", "摘要", "入力者", "入庫日"
     ]
+
+    # ==== 集計（リング/ペンダント/チェーン/その他） ====
+    summary, totals = summarize_inventory(rows)
+
+    # inventory.html を表示
+    return render_template(
+        "inventory.html",
+        base_name=base_name,   # ここは日本語の拠点名
+        headers=headers,
+        rows=rows,
+        enumerate=enumerate,
+        summary=summary,
+        totals=totals,
+        total_count=totals["count"],
+        total_上代=totals["上代"],
+        total_下代=totals["下代"],
+    )
 
     # ==== 集計（リング/ペンダント/チェーン/その他） ====
     summary, totals = summarize_inventory(rows)
