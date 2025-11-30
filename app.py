@@ -662,6 +662,10 @@ def add_stock_for_base(base_slug):
         per_base_rows = {base_name: load_inventory(base_name)}
         today_str_dash = datetime.date.today().strftime("%Y-%m-%d")
 
+        # ★GAS: 送信用バッファ
+        rows_to_send = []
+        payload_user = ""  # 最初の入力者をまとめ用に記録
+
         # 単位正規化用：脇石(ct) / チェーン長(cm)
         def normalize_ct(s: str) -> str:
             s = s.strip()
@@ -770,6 +774,26 @@ def add_stock_for_base(base_slug):
             append_log(row, "入庫", branch)
             rows_added += 1
 
+            # ★GAS: 送信用データもここで1行分作る
+            if not payload_user and input_usr:
+                payload_user = input_usr
+
+            rows_to_send.append({
+                "no": "",                     # No. はシート側で採番するなら空でOK
+                "metal": jigan,
+                "item": item,
+                "center_stone": chuseki,
+                "size": size_for_store,
+                "product_code": hinban,
+                "price": uedai,
+                "cost": gedai,
+                "side_stone": wakishi_clean,
+                "chain_length": chain_clean,
+                "note": tekiyo,
+                "stock_date": nyuko_dt,
+                "cost_numeric": gedai_num,
+            })
+
         if error:
             flash(error, "error")
             return render_template(
@@ -861,6 +885,16 @@ def add_stock_for_base(base_slug):
         rows_sorted = sort_rows(per_base_rows[base_name])
         save_inventory(base_name, rows_sorted)
 
+        # ★GAS: 行があれば送信（失敗してもアプリはそのまま）
+        if rows_to_send:
+            payload = {
+                "action": "add_stock",
+                "base": base_name,
+                "user": payload_user or "",
+                "rows": rows_to_send,
+            }
+            send_inventory_to_gas(payload)
+
         flash(f"{rows_added} 件を {base_name} に入庫しました", "success")
         return redirect(url_for("add_stock_for_base", base_slug=base_slug))
 
@@ -883,6 +917,7 @@ def add_stock_for_base(base_slug):
         success=None,
         fixed_base=base_name,
     )
+
 
 
 @app.route("/add_stock", methods=["GET", "POST"])
