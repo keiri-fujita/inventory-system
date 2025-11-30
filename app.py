@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, session
 import csv
 import os
 from collections import defaultdict
@@ -6,8 +6,13 @@ import datetime  # ← これを追加
 from datetime import date
 import re
 
-app = Flask(__name__)
-app.secret_key = "super_secret_key_1234"   # ← これを追加！
+aapp = Flask(__name__)
+
+# セッション用の秘密鍵（Render の環境変数から取得）
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
+# ログイン用パスワード（Render の環境変数から取得）
+APP_PASSWORD = os.environ.get("APP_PASSWORD", "demo-password")
+
 
 # === 設定値 ===
 # URL で使うスラッグ → 実際の拠点名（CSVファイル名にもなる）
@@ -272,8 +277,43 @@ BASES = [
     },
 ]
 
+@app.before_request
+def require_login():
+    # ログインページと静的ファイルはスルー
+    if request.endpoint in ("login", "static"):
+        return
+
+    # すでにログイン済みならOK
+    if session.get("logged_in"):
+        return
+
+    # それ以外はログインページへ
+    return redirect(url_for("login"))
+
+
+
 
 # === ルーティング ===
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        if password == APP_PASSWORD:
+            session["logged_in"] = True
+            # トップページの関数名に合わせる（ここでは index と仮定）
+            return redirect(url_for("index"))
+        else:
+            error = "パスワードが違います。"
+    return render_template("login.html", error=error)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
 
 @app.route("/print/base/<base_name>")
 def print_base_inventory(base_name):

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>ログイン - 在庫管理システム</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      background: #e6fff3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .card {
+      background: #ffffff;
+      padding: 32px 40px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+      min-width: 320px;
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 20px;
+      margin-bottom: 16px;
+    }
+    .field {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+    input[type="password"] {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid #b5e3c9;
+      font-size: 14px;
+    }
+    button {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: none;
+      font-size: 14px;
+      cursor: pointer;
+      background: #23b26d;
+      color: #fff;
+      font-weight: bold;
+    }
+    .error {
+      color: #d9534f;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>在庫管理システム ログイン</h1>
+    {% if error %}
+      <div class="error">{{ error }}</div>
+    {% endif %}
+    <form method="post">
+      <div class="field">
+        <label for="password">パスワード</label>
+        <input type="password" id="password" name="password" autofocus>
+      </div>
+      <button type="submit">ログイン</button>
+    </form>
+  </div>
+</body>
+</html>
