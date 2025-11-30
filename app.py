@@ -6,7 +6,7 @@ import datetime  # ← これを追加
 from datetime import date
 import re
 
-aapp = Flask(__name__)
+app = Flask(__name__)
 
 # セッション用の秘密鍵（Render の環境変数から取得）
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
