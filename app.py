@@ -359,12 +359,16 @@ def index():
 
 @app.route("/inventory/<base_slug>", methods=["GET", "POST"])
 def inventory(base_slug):
+    """
+    拠点別在庫一覧。
+    URL は /inventory/kobe /inventory/yokohama /inventory/ateam など slug ベース。
+    """
     # スラッグから拠点名に変換（例: "kobe" -> "神戸"）
     base_name = get_base_name_from_slug(base_slug)
     if not base_name:
         return "拠点が見つかりません", 404
 
-    # 対象拠点の在庫を読み込み
+    # 対象拠点の在庫を読み込み（CSV は拠点名で管理）
     rows = load_inventory(base_name)
 
     # ---- 出庫処理 ----
@@ -392,7 +396,8 @@ def inventory(base_slug):
     # inventory.html を表示
     return render_template(
         "inventory.html",
-        base_name=base_name,   # ここは日本語の拠点名
+        base_name=base_name,   # 画面表示用：神戸/横浜/Aチーム など
+        base_slug=base_slug,   # 必要ならテンプレ側でリンク用に使える
         headers=headers,
         rows=rows,
         enumerate=enumerate,
@@ -402,24 +407,6 @@ def inventory(base_slug):
         total_上代=totals["上代"],
         total_下代=totals["下代"],
     )
-
-    # ==== 集計（リング/ペンダント/チェーン/その他） ====
-    summary, totals = summarize_inventory(rows)
-
-    # inventory.html を表示
-    return render_template(
-        "inventory.html",
-        base_name=base_name,
-        headers=headers,
-        rows=rows,
-        enumerate=enumerate,
-        summary=summary,
-        totals=totals,
-        total_count=totals["count"],
-        total_上代=totals["上代"],
-        total_下代=totals["下代"],
-    )
-
 
 @app.route("/inventory/<base_name>/edit/<no>", methods=["GET", "POST"])
 def edit_inventory_row(base_name, no):
