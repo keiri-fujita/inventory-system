@@ -5,6 +5,7 @@ from collections import defaultdict
 import datetime  # ← これを追加
 from datetime import date
 import re
+import requests  # ★ これを追加
 
 app = Flask(__name__)
 
@@ -12,6 +13,33 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 # ログイン用パスワード（Render の環境変数から取得）
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "demo-password")
+
+
+# GAS の Web アプリ URL（Render の環境変数から取得）
+GAS_ENDPOINT_URL = os.environ.get("GAS_ENDPOINT_URL")
+
+
+def send_inventory_to_gas(payload):
+    """
+    在庫データを GAS の Web アプリに送信するヘルパー関数（まだ枠だけ）
+    payload: dict にして渡す想定（後で中身を決める）
+    """
+    if not GAS_ENDPOINT_URL:
+        # まだエンドポイントを設定していない場合は何もせずスキップ
+        print("[send_inventory_to_gas] GAS_ENDPOINT_URL not set. Skip sending.")
+        return False
+
+    try:
+        # JSON 形式で POST
+        res = requests.post(GAS_ENDPOINT_URL, json=payload, timeout=10)
+        # ログを少しだけ出しておく（テキストは長すぎないよう先頭だけ）
+        print("[send_inventory_to_gas] status:", res.status_code, res.text[:200])
+        res.raise_for_status()
+        return True
+    except Exception as e:
+        # エラーが出てもアプリ本体は落とさない
+        print("[send_inventory_to_gas] Error:", e)
+        return False
 
 
 # === 設定値 ===
@@ -279,18 +307,14 @@ BASES = [
 
 @app.before_request
 def require_login():
-    # ログインページと静的ファイルはスルー
-    if request.endpoint in ("login", "static"):
+    # ログインページと静的ファイル、ログアウトはそのまま許可
+    if request.endpoint in ("login", "logout", "static"):
         return
 
-    # すでにログイン済みならOK
     if session.get("logged_in"):
         return
 
-    # それ以外はログインページへ
     return redirect(url_for("login"))
-
-
 
 
 # === ルーティング ===
