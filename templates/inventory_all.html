@@ -1,283 +1,607 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<title>全拠点の在庫一覧</title>
-<style>
-body { font-size: 13px; }
+  <meta charset="UTF-8" />
+  <title>全拠点の在庫一覧</title>
+  <style>
+    body { font-size: 13px; }
 
-/* ✅ 検索バー右横に自然配置 */
-.summary-wrap {
-  position: relative;
-  margin: -35px auto 0 auto;
-  width: fit-content;
+   /* 集計表＋ボタンを横並びにするコンテナ */
+    .header-bar {
+      display: flex;
+      align-items: flex-end;  /* ★ 下端そろえ */
+      gap: 56px;              /* ★ 集計表とボタンの横の隙間 */
+      margin-bottom: 8px;
+  }
+
+    /* 集計表（左側） */
+    .summary-wrap {
+      flex: 0 0 auto;
+    }
+
+    .summary {
+      font-size: 12px;
+      border-collapse: collapse;
+      background: #fff;
+      line-height: 1.1;
+    }
+
+    .summary th,
+    .summary td {
+      border: 1px solid #ccc;
+      padding: 1px 4px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .summary thead th {
+      text-align: center;
+      background-color: #e6ffe6 !important;
+      font-weight: bold;
+    }
+
+    .summary tbody tr:hover {
+      background: none;
+      font-weight: normal;
+      transition: none;
+    }
+
+    /* 右側：ボタン＆検索エリア */
+    .controls-right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* 在庫テーブル */
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 12px;
+      max-height: 70vh;
+      overflow-y: auto;
+      display: block;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 4px 8px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    th.sortable { cursor: pointer; }
+
+    thead tr:first-child th {
+      position: sticky;
+      top: 0;
+      background-color: #f3e6ff;
+      z-index: 3;
+    }
+
+    thead tr:nth-child(2) th {
+      position: sticky;
+      top: 28px;
+      background: #fff;
+      z-index: 2;
+    }
+
+    tbody tr:hover {
+      background-color: #ffd8c2;  /* コーラル系 */
+      font-weight: bold;
+      transition: all 0.2s ease;
+    }
+
+    select {
+      font-size: 11px;
+      width: 100%;
+    }
+
+    .sort-icon {
+      margin-left: 4px;
+      font-size: 10px;
+    }
+
+    /* このページのボタン共通デザイン */
+    #inventory-form button {
+    padding: 4px 10px;
+    background: #eeeeee;
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #333;
+    cursor: pointer;
+}
+#inventory-form button:hover {
+    background: #dddddd;
 }
 
-/* === 集計テーブル === */
-.summary {
-  font-size: 12px;
-  border-collapse: collapse;
-  background: #fff;
-  line-height: 1.1;
-}
-
-/* 罫線や配置 */
-.summary th,
-.summary td {
-  border: 1px solid #ccc;
-  padding: 1px 4px;
-  text-align: right;
-  white-space: nowrap;
-}
-
-/* ✅ タイトル行を淡い黄緑に */
-.summary thead th {
-  text-align: center;
-  background-color: #e6ffe6 !important;
-  font-weight: bold;
-}
-
-
-.summary tbody tr {
-  background-color: #fff;
-}
-
-.summary tbody tr:hover {
-  background: none;
-  font-weight: normal;
-  transition: none;
-}
-
-/* 在庫テーブル */
-table {
-  border-collapse: collapse;
-  width: 100%;
-  font-size: 12px;
-  max-height: 70vh;
-  overflow-y: auto;
-  display: block;
-}
-th, td {
-  border: 1px solid #ccc;
-  padding: 4px 8px;
-  text-align: center;
-  white-space: nowrap;
-}
-th.sortable { cursor: pointer; }
-
-/* 1行目（列名行）を淡い紫に */
-thead tr:first-child th {
-  position: sticky;
-  top: 0;
-  background-color: #f3e6ff;
-  z-index: 3;
-  cursor: pointer;
-}
-/* 2行目（絞り込み用セレクト行）は白に */
-thead tr:nth-child(2) th {
-  position: sticky;
-  top: 28px;
-  background: #fff;
-  z-index: 2;
-}
-
-tbody tr:hover {
-  background-color: #ffd8c2;  /* コーラルピンク */
-  font-weight: bold;
-  transition: all 0.2s ease;
-}
-
-
-select { font-size: 11px; width: 100%; }
-.sort-icon { margin-left: 4px; font-size: 10px; }
-</style>
+  </style>
 </head>
 <body>
-<h1>全拠点の在庫一覧</h1>
+  <h1>全拠点の在庫一覧</h1>
 
-<!-- ✅ 外枠（flexで検索と集計を左右に並べる） -->
-<div style="
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-  padding-right: 40px;
-">
+  <!-- ===== 集計表 ＋ ボタン・検索エリア ===== -->
+  <div class="header-bar">
+    <!-- 左：集計表 -->
+    <div class="summary-wrap">
+      {% set cats = ["リング","ペンダント","チェーン","その他"] %}
+      <table class="summary" aria-label="全体集計">
+        <thead>
+          <tr>
+            <th>アイテム</th><th>数量</th><th>上代</th><th>下代</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in cats %}
+          <tr>
+            <td>{{ c }}</td>
+            <td>{{ summary[c]["count"] }}</td>
+            <td>{{ summary[c]["上代"] }}</td>
+            <td>{{ summary[c]["下代"] }}</td>
+          </tr>
+          {% endfor %}
+          <tr style="font-weight:700;">
+            <td>合計</td>
+            <td>{{ totals.count }}</td>
+            <td>{{ totals["上代"] }}</td>
+            <td>{{ totals["下代"] }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-  <!-- 左側（検索バー＋件数） -->
-  <div style="display: flex; align-items: center; gap: 12px; margin-top: 50px;">
-    <input
-      type="text"
-      id="searchBox"
-      placeholder="キーワード検索（例：拠点名・品番・金額など）"
-      style="padding: 4px; font-size: 12px; width: 250px;"
-    />
-    <span id="countLabel" style="font-size: 12px; white-space: nowrap;">表示件数：0 / 総件数：0</span>
-  </div>
+      <!-- 右：ボタン・検索（1行、狭い画面では折り返し） -->
+  <div class="controls-right">
+    <div class="controls-row">
+      <button type="button" id="resetFilters">フィルタ解除</button>
+      <button type="button" id="btn-print-filtered">在庫表印刷</button>
+      <button type="button" id="btn-open-tag-dialog">値札印刷</button>
 
-  <!-- 右側（集計表） -->
-  <div class="summary-wrap">
-    {% set cats = ["リング","ペンダント","チェーン","その他"] %}
-    <table class="summary" aria-label="全体集計">
-      <thead>
-        <tr>
-          <th>アイテム</th><th>数量</th><th>上代</th><th>下代</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for c in cats %}
-        <tr>
-          <td>{{ c }}</td>
-          <td>{{ summary[c]["count"] }}</td>
-          <td>{{ summary[c]["上代"] }}</td>
-          <td>{{ summary[c]["下代"] }}</td>
-        </tr>
-        {% endfor %}
-        <tr style="font-weight:700;">
-          <td>合計</td>
-          <td>{{ totals.count }}</td>
-          <td>{{ totals["上代"] }}</td>
-          <td>{{ totals["下代"] }}</td>
-        </tr>
-      </tbody>
-    </table>
+      <input
+        type="text"
+        id="searchBox"
+        placeholder="キーワード検索（例：拠点・品番・金額など）"
+        style="padding: 4px; font-size: 12px; width: 280px;"
+      />
+      <span id="countLabel" style="font-size: 12px; white-space: nowrap;">
+        表示件数：0 / 総件数：0
+      </span>
+    </div>
   </div>
 </div>
 
-<!-- === メインテーブル === -->
-<table id="inventoryTable">
-  <thead>
-    <tr>
-      {% for h in headers %}
-        <th class="sortable" onclick="sortTable({{ loop.index0 }}, this)">
-          {{ h }}<span class="sort-icon">▼</span>
-        </th>
-      {% endfor %}
-    </tr>
-    <tr>
-      {% for col in headers %}
+  <!-- ===== メインテーブル ===== -->
+  <table id="inventoryTable">
+    <thead>
+      <tr>
+        <th>編集</th>
+        {# headers は ["拠点","地金","アイテム",...,"入庫日"] を想定 #}
+        {% for h in headers %}
+          <th class="sortable" onclick="sortTable({{ loop.index }}, this)">
+            {{ h }}<span class="sort-icon">▼</span>
+          </th>
+        {% endfor %}
+      </tr>
+      <tr>
+        <th></th>
+        {% for h in headers %}
         <th>
-          <select onchange="applyAllFilters()" data-col="{{ loop.index0 }}">
+          <select onchange="applyFiltersAndSearch()" data-col="{{ loop.index }}">
             <option value="">すべて</option>
           </select>
         </th>
+        {% endfor %}
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for row in rows %}
+      {#
+        row:
+        [0] 拠点
+        [1] No.
+        [2] 出庫フラグ（全拠点画面では使わない）
+        [3] 地金
+        [4] アイテム
+        [5] 中石
+        [6] サイズ
+        [7] 品番
+        [8] 上代
+        [9] 下代
+        [10] 脇石
+        [11] チェーン長
+        [12] 摘要
+        [13] 入力者
+        [14] 入庫日
+        [15] 下代（数値：非表示）
+      #}
+      {% set base = row[0] %}
+      {% set no   = row[1] %}
+      <tr data-no="{{ no }}">
+        <!-- 編集リンク -->
+        <td>
+          <a href="{{ url_for('edit_inventory_row',
+                              base_name=base,
+                              no=no,
+                              from_all=1) }}">
+            編集
+          </a>
+        </td>
+
+        <!-- 拠点 -->
+        <td>{{ base }}</td>
+
+        <!-- 地金〜入庫日（row[3]〜row[14]） -->
+        {% for cell in row[3:15] %}
+          <td>{{ cell }}</td>
+        {% endfor %}
+      </tr>
       {% endfor %}
+    </tbody>
+  </table>
+
+  <p><a href="/">← 戻る</a></p>
+
+  <!-- ================= JS（検索・フィルタ・ソート・印刷・値札） ================= -->
+  <script>
+    let sortOrder = {};
+    let searchTimeout = null;
+    let totalRows = 0;
+
+    window.addEventListener('DOMContentLoaded', function () {
+      const table   = document.getElementById("inventoryTable");
+      const tbody   = table.tBodies[0];
+      const selects = table.querySelectorAll("thead tr:nth-child(2) select");
+      const searchBox = document.getElementById("searchBox");
+      const resetBtn  = document.getElementById("resetFilters");
+      const btnPrint  = document.getElementById("btn-print-filtered");
+      const btnTag    = document.getElementById("btn-open-tag-dialog");
+
+      totalRows = tbody.rows.length;
+
+      // セレクトボックスに候補値をセット
+      selects.forEach(select => {
+        const colIndex = parseInt(select.dataset.col, 10);  // 1〜
+        const values = new Set();
+
+        Array.from(tbody.rows).forEach(tr => {
+          const cell = tr.cells[colIndex];
+          if (!cell) return;
+          const text = cell.textContent.trim();
+          if (text) values.add(text);
+        });
+
+        Array.from(values).sort().forEach(v => {
+          const opt = document.createElement("option");
+          opt.value = v;
+          opt.textContent = v;
+          select.appendChild(opt);
+        });
+      });
+
+      // 検索ボックス
+      if (searchBox) {
+        searchBox.addEventListener("input", function () {
+          clearTimeout(searchTimeout);
+          searchTimeout = setTimeout(applyFiltersAndSearch, 400);
+        });
+      }
+
+      // フィルタ解除
+      if (resetBtn) {
+        resetBtn.addEventListener("click", resetFilters);
+      }
+
+      // 在庫表印刷
+      if (btnPrint) {
+        btnPrint.addEventListener("click", printFilteredInventory);
+      }
+
+      // 値札印刷ダイアログ
+      if (btnTag) {
+        btnTag.addEventListener("click", openTagPrintDialog);
+      }
+
+      updateCountLabel();
+    });
+
+    function updateCountLabel() {
+      const tbody  = document.querySelector("#inventoryTable tbody");
+      let visible  = 0;
+      Array.from(tbody.rows).forEach(tr => {
+        if (tr.style.display !== "none") visible++;
+      });
+      if (!totalRows) totalRows = tbody.rows.length;
+      document.getElementById("countLabel").textContent =
+        `表示件数：${visible} / 総件数：${totalRows}`;
+    }
+
+    // フィルタ解除
+    function resetFilters() {
+      const table   = document.getElementById("inventoryTable");
+      const tbody   = table.tBodies[0];
+      const selects = table.querySelectorAll("thead tr:nth-child(2) select");
+      const search  = document.getElementById("searchBox");
+
+      selects.forEach(sel => sel.value = "");
+      if (search) search.value = "";
+
+      Array.from(tbody.rows).forEach(tr => tr.style.display = "");
+      updateCountLabel();
+    }
+
+    // フィルタ＋検索
+    function applyFiltersAndSearch() {
+      const table   = document.getElementById("inventoryTable");
+      const tbody   = table.tBodies[0];
+      const selects = table.querySelectorAll("thead tr:nth-child(2) select");
+      const searchValue = document.getElementById("searchBox").value.trim().toLowerCase();
+      const searchWords = searchValue.split(/\s+/).filter(w => w);
+
+      Array.from(tbody.rows).forEach(tr => {
+        let visible = true;
+        const cells = tr.cells;
+
+        // 各列フィルタ
+        selects.forEach(select => {
+          const col = parseInt(select.dataset.col, 10); // 1〜
+          const val = select.value.trim().toLowerCase();
+          if (!val) return;
+          const cell = cells[col];
+          const text = cell ? cell.textContent.trim().toLowerCase() : "";
+          if (!text.includes(val)) visible = false;
+        });
+
+        // キーワード検索（AND）
+        if (visible && searchWords.length > 0) {
+          const rowText = Array.from(cells)
+            .map(td => td.textContent.trim().toLowerCase().replace(/,/g, ""))
+            .join(" ");
+          for (const w of searchWords) {
+            const term = w.replace(/,/g, "");
+            if (!rowText.includes(term)) {
+              visible = false;
+              break;
+            }
+          }
+        }
+
+        tr.style.display = visible ? "" : "none";
+      });
+
+      updateCountLabel();
+    }
+
+    // ソート（0列目=編集は除外）
+    function sortTable(colIndex, headerCell) {
+      if (colIndex === 0) return;
+
+      const table = document.getElementById("inventoryTable");
+      const tbody = table.tBodies[0];
+      const rows  = Array.from(tbody.rows);
+
+      const asc = !(sortOrder[colIndex]);
+      sortOrder[colIndex] = asc;
+
+      rows.sort((a, b) => {
+        const A = (a.cells[colIndex]?.textContent || "").trim().replace(/,/g, "");
+        const B = (b.cells[colIndex]?.textContent || "").trim().replace(/,/g, "");
+        const numA = parseFloat(A);
+        const numB = parseFloat(B);
+
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return asc ? numA - numB : numB - numA;
+        }
+        return asc ? A.localeCompare(B, "ja") : B.localeCompare(A, "ja");
+      });
+
+      rows.forEach(tr => tbody.appendChild(tr));
+
+      document.querySelectorAll(".sort-icon").forEach(i => i.textContent = "▼");
+      headerCell.querySelector(".sort-icon").textContent = asc ? "▲" : "▼";
+
+      // ソート後もフィルタを維持
+      applyFiltersAndSearch();
+    }
+
+    // ===== 在庫表印刷（絞り込み後の行だけ） =====
+    function printFilteredInventory() {
+      const table = document.getElementById("inventoryTable");
+      const tbody = table.tBodies[0];
+      const visibleRows = Array.from(tbody.rows).filter(tr => tr.style.display !== "none");
+
+      if (visibleRows.length === 0) {
+        alert("表示されている行がありません。");
+        return;
+      }
+
+      // ヘッダー（編集列を除く）
+      const headerCells = Array.from(table.tHead.rows[0].cells).slice(1);
+      const headers = headerCells.map(th => th.textContent.trim());
+
+      const printWin = window.open("", "_blank");
+      const doc = printWin.document;
+
+      doc.open();
+      doc.write(`<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>全拠点 在庫一覧</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 11pt;
+    color: #333;
+  }
+  .print-container {
+    padding-top: 10mm;
+    padding-bottom: 10mm;
+    padding-left: 0;
+    padding-right: 0;
+    text-align: center;
+  }
+  table {
+    margin-left: auto;
+    margin-right: auto;
+    width: auto;
+    border-collapse: collapse;
+    page-break-inside: auto;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  th, td {
+    border: 1px solid #999;
+    padding: 3px 4px;
+    text-align: left;
+    vertical-align: top;
+    font-size: 10pt;
+    white-space: nowrap;
+    line-height: 1.4;
+  }
+  th {
+    background: #f0f0f0;
+  }
+  .table-title-row th {
+    background: #ffffff;
+    font-size: 14pt;
+    text-align: center;
+    padding: 6px 0;
+    border-bottom: 2px solid #666;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 15mm 6mm 15mm 6mm;
+  }
+    /* 集計表の高さにボタンを合わせるためのマージン */
+  .controls-wrapper {
+    margin-top: 56px;   /* 必要なら54〜60で微調整OK */
+}
+</style>
+</head>
+<body>
+<div class="print-container">
+<table>
+  <thead>
+    <tr class="table-title-row">
+      <th colspan="${headers.length}">全拠点 在庫一覧</th>
+    </tr>
+    <tr>
+      ${headers.map(h => `<th>${h}</th>`).join("")}
     </tr>
   </thead>
-
   <tbody>
-    {% for row in rows %}
-    <tr>
-      {% for cell in row[:13] %}
-        <td>{{ cell }}</td>
-      {% endfor %}
-    </tr>
-    {% endfor %}
+`);
+
+      visibleRows.forEach(tr => {
+        const cells = Array.from(tr.cells).slice(1).map(td => td.textContent.trim());
+        doc.write("<tr>");
+        cells.forEach(text => {
+          doc.write(`<td>${text}</td>`);
+        });
+        doc.write("</tr>");
+      });
+
+      doc.write(`
   </tbody>
 </table>
+</div>
+</body>
+</html>`);
+      doc.close();
 
-<p><a href="/">← 戻る</a></p>
-
-<script>
-let inventoryData = [];
-let sortOrder = {};
-let searchTimeout;
-
-window.onload = function () {
-  const table = document.getElementById("inventoryTable");
-  const tbody = table.tBodies[0];
-  const selects = table.querySelectorAll("thead tr:nth-child(2) select");
-
-  inventoryData = Array.from(tbody.rows).map(row =>
-    Array.from(row.cells).map(cell => cell.innerText.trim())
-  );
-
-  selects.forEach(select => {
-    const colIndex = parseInt(select.dataset.col);
-    const values = new Set(inventoryData.map(row => row[colIndex]).filter(v => v));
-    Array.from(values).sort().forEach(v => {
-      const option = document.createElement("option");
-      option.value = v;
-      option.textContent = v;
-      select.appendChild(option);
-    });
-  });
-
-  updateCountLabel();
-};
-
-function searchTable() {
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(() => applyFiltersAndSearch(), 400);
-}
-
-function renderTable(rows) {
-  const tbody = document.querySelector("#inventoryTable tbody");
-  tbody.innerHTML = rows.map(row =>
-    `<tr>${row.map(c => `<td>${c}</td>`).join("")}</tr>`
-  ).join("");
-  updateCountLabel();
-}
-
-function updateCountLabel() {
-  const tbody = document.querySelector("#inventoryTable tbody");
-  const total = inventoryData.length;
-  const visible = tbody.querySelectorAll("tr").length;
-  document.getElementById("countLabel").textContent =
-    `表示件数：${visible} / 総件数：${total}`;
-}
-
-function applyFiltersAndSearch() {
-  const selects = document.querySelectorAll("thead tr:nth-child(2) select");
-  const searchValue = document.getElementById("searchBox").value.trim().toLowerCase();
-  const searchWords = searchValue.split(/\s+/).filter(w => w);
-
-  const filtered = inventoryData.filter(row => {
-    for (const select of selects) {
-      const col = parseInt(select.dataset.col);
-      const val = select.value.trim().toLowerCase();
-      if (val && !row[col].toLowerCase().includes(val)) return false;
+      printWin.focus();
+      printWin.print();
     }
 
-    if (searchWords.length > 0) {
-      const rowText = row.join(" ").toLowerCase().replace(/,/g, "");
-      for (const w of searchWords) {
-        const cleanWord = w.replace(/,/g, "");
-        if (!rowText.includes(cleanWord)) return false;
+    /* ========= 値札印刷 ========= */
+
+    // SweetAlert2 で種類だけ選ばせる
+    function openTagPrintDialog() {
+      const tbody = document.querySelector("#inventoryTable tbody");
+      const visibleRows = Array.from(tbody.rows).filter(tr => tr.style.display !== "none");
+
+      if (visibleRows.length === 0) {
+        alert("値札を作成する行がありません。");
+        return;
       }
+
+      Swal.fire({
+        title: '値札印刷',
+        html: `
+          <div style="text-align:left; font-size:13px;">
+            <p style="margin-bottom:6px;">値札の種類を選んでください：</p>
+            <label style="display:block; margin-left:8px;">
+              <input type="radio" name="tag-type" value="proper" checked>
+              プロパー値札
+            </label>
+            <label style="display:block; margin-left:8px;">
+              <input type="radio" name="tag-type" value="event">
+              催事用値札
+            </label>
+          </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: '印刷する',
+        cancelButtonText: 'キャンセル',
+        width: 420,
+        preConfirm: () => {
+          const type  = document.querySelector('input[name="tag-type"]:checked');
+          if (!type) {
+            Swal.showValidationMessage('値札の種類を選択してください。');
+            return false;
+          }
+          return { tagType: type.value };
+        }
+      }).then((result) => {
+        if (result.isConfirmed && result.value) {
+          openTagPrint(result.value.tagType);
+        }
+      });
     }
 
-    return true;
-  });
+    // フィルタ後に画面に見えている行だけを対象に値札印刷
+    function openTagPrint(tagType) {
+      const tbody = document.querySelector("#inventoryTable tbody");
+      const visibleRows = Array.from(tbody.rows).filter(tr => tr.style.display !== "none");
 
-  renderTable(filtered);
-}
+      const nos = visibleRows
+        .map(tr => tr.dataset.no)
+        .filter(no => !!no);
 
-function sortTable(colIndex, headerCell) {
-  sortOrder[colIndex] = !sortOrder[colIndex];
+      if (nos.length === 0) {
+        alert("値札を作成する行が選ばれていません。");
+        return;
+      }
 
-  inventoryData.sort((a, b) => {
-    const A = a[colIndex].replace(/,/g, "");
-    const B = b[colIndex].replace(/,/g, "");
-    const numA = parseFloat(A);
-    const numB = parseFloat(B);
+      const params = new URLSearchParams();
+      params.set("type", tagType);      // 'proper' or 'event'
+      params.set("nos", nos.join(",")); // "1001,1002,1003,..."
 
-    if (!isNaN(numA) && !isNaN(numB))
-      return sortOrder[colIndex] ? numA - numB : numB - numA;
+      // 全拠点用の値札印刷エンドポイント
+      const url = "/print_tags_all?" + params.toString();
+      window.open(url, "_blank");
+    }
+  </script>
 
-    return sortOrder[colIndex]
-      ? A.localeCompare(B, "ja")
-      : B.localeCompare(A, "ja");
-  });
-
-  document.querySelectorAll(".sort-icon").forEach(i => i.textContent = "▼");
-  headerCell.querySelector(".sort-icon").textContent = sortOrder[colIndex] ? "▲" : "▼";
-
-  applyFiltersAndSearch();
-}
-
-document.getElementById("searchBox").addEventListener("input", searchTable);
-</script>
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </body>
 </html>

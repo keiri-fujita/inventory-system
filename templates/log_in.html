@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title }}</title>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* === 上部固定ヘッダー === */
+    .page-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #fff;
+      z-index: 20;
+      padding: 12px 2em 6px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    .page-header h1 {
+      display: inline-block;
+      margin: 0;
+    }
+    .back-link {
+      float: right;
+      font-size: 14px;
+      margin-top: 4px;
+      text-decoration: none;
+    }
+
+    /* === ログエリア（スクロール） === */
+    .table-container {
+      position: fixed;
+      top: 60px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 8px 2em 16px;
+      overflow-y: auto;
+      background: #fff;
+      box-sizing: border-box;
+    }
+
+    /* === フィルタバー === */
+    .filter-bar {
+      position: sticky;
+      top: 0;
+      z-index: 15;
+      background: #fff;
+      padding-bottom: 4px;
+    }
+
+    /* === テーブル === */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin-top: 0;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      text-align: center;
+      padding: 4px 6px;
+
+      /* ベースの文字サイズ */
+      font-size: 13px;
+
+      /* 1行表示・はみ出し検知用 */
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    thead th {
+      background: #eee;
+    }
+
+    /* 見出し行固定 */
+    thead tr:first-child th {
+      position: sticky;
+      top: 30px;  /* filter-bar の高さ */
+      z-index: 10;
+    }
+
+    /* フィルタ行固定 */
+    thead tr.filter-row th {
+      position: sticky;
+      top: 54px;  /* 30 + 見出し行の高さ */
+      z-index: 11;
+      background: #f5f5f5;
+    }
+
+    tbody tr:hover {
+      background: #e5f7ea;
+      font-weight: 600;
+    }
+
+    .filter-select {
+      width: 100%;
+      box-sizing: border-box;
+      font-size: 12px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="page-header">
+    <h1>{{ title }}</h1>
+    <a href="/" class="back-link">← 戻る</a>
+  </div>
+
+  <div class="table-container">
+
+    <div class="filter-bar">
+      <button id="reset-filters">フィルタをすべて解除</button>
+    </div>
+
+    {# 表示しないヘッダー #}
+    {% set hide_headers = ["処理", "No.", "出庫日", "メモ", "下代（数値）"] %}
+
+    <table>
+      <thead>
+        <tr>
+          {% for h in headers %}
+            {% if h not in hide_headers %}
+              <th>{{ h }}</th>
+            {% endif %}
+          {% endfor %}
+        </tr>
+
+        <tr class="filter-row">
+          {% for h in headers %}
+            {% if h not in hide_headers %}
+              <th>
+                <select class="filter-select">
+                  <option value="">すべて</option>
+                </select>
+              </th>
+            {% endif %}
+          {% endfor %}
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            {% for cell in row %}
+              {% set h = headers[loop.index0] %}
+              {% if h not in hide_headers %}
+                <td>{{ cell }}</td>
+              {% endif %}
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const table = document.querySelector("table");
+      if (!table) return;
+
+      const tbody = table.tBodies[0];
+      const filterRow = table.tHead.querySelector(".filter-row");
+      if (!tbody || !filterRow) return;
+
+      const selects = Array.from(filterRow.querySelectorAll("select"));
+      selects.forEach((sel, idx) => sel.dataset.col = idx);
+
+      // 列ごとの選択肢を作成
+      selects.forEach(sel => {
+        const col = Number(sel.dataset.col);
+        const values = new Set();
+        for (const tr of tbody.rows) {
+          const cell = tr.cells[col];
+          if (!cell) continue;
+          const text = cell.textContent.trim();
+          if (text) values.add(text);
+        }
+        Array.from(values).sort().forEach(v => {
+          const opt = document.createElement("option");
+          opt.value = v;
+          opt.textContent = v;
+          sel.appendChild(opt);
+        });
+      });
+
+      function applyFilters() {
+        const conditions = selects
+          .filter(sel => sel.value !== "")
+          .map(sel => ({ col: Number(sel.dataset.col), value: sel.value }));
+
+        for (const tr of tbody.rows) {
+          let visible = true;
+          for (const c of conditions) {
+            const cell = tr.cells[c.col];
+            if (!cell) continue;
+            const text = cell.textContent.trim();
+            if (text !== c.value) {
+              visible = false;
+              break;
+            }
+          }
+          tr.style.display = visible ? "" : "none";
+        }
+      }
+
+      selects.forEach(sel => sel.addEventListener("change", applyFilters));
+
+      const resetBtn = document.getElementById("reset-filters");
+      if (resetBtn) {
+        resetBtn.addEventListener("click", () => {
+          selects.forEach(sel => sel.value = "");
+          Array.from(tbody.rows).forEach(tr => tr.style.display = "");
+        });
+      }
+
+      // ★ 文字をセル幅に収まるまで自動で小さくする
+      function autoShrinkCells() {
+        const MIN_SIZE = 9;      // 最小フォントサイズ(px)
+        const STEP = 0.5;        // 縮める量
+
+        const cells = table.querySelectorAll("tbody td");
+        cells.forEach(td => {
+          let size = parseFloat(getComputedStyle(td).fontSize);
+          if (isNaN(size)) size = 13;
+
+          // はみ出している間は少しずつ縮める
+          while (td.scrollWidth > td.clientWidth && size > MIN_SIZE) {
+            size -= STEP;
+            td.style.fontSize = size + "px";
+          }
+        });
+      }
+
+      autoShrinkCells();
+      // 必要ならウィンドウリサイズ時にも再調整したい場合は以下を有効に
+      // window.addEventListener('resize', autoShrinkCells);
+    });
+  </script>
+
+</body>
+</html>

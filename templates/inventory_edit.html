@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ base_name }}の在庫編集（No.{{ no }}）</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 2em;
+      font-size: 13px;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    form {
+      max-width: 800px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 1em;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px 8px;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    th {
+      width: 120px;
+      background: #f5f5f5;
+      white-space: nowrap;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+      width: 100%;
+      box-sizing: border-box;
+      font-size: 13px;
+      padding: 3px 4px;
+    }
+
+    .buttons {
+      margin-top: 16px;
+    }
+
+    .buttons button,
+    .buttons a {
+      padding: 6px 14px;
+      font-size: 13px;
+      text-decoration: none;
+      margin-right: 8px;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 8px;
+      text-decoration: none;
+      font-size: 13px;
+    }
+
+    .flash-area {
+      margin-bottom: 8px;
+    }
+    .flash-message {
+      padding: 8px 10px;
+      border-radius: 4px;
+      margin-bottom: 4px;
+      font-size: 13px;
+      font-weight: bold;
+    }
+    .flash-message.error {
+      background: #ffeaea;
+      border-left: 4px solid #d9534f;
+      color: #b52b27;
+    }
+  </style>
+</head>
+<body>
+
+  {% if from_all %}
+    <a href="{{ url_for('inventory_all') }}" class="back-link">← 全拠点の在庫一覧に戻る</a>
+  {% else %}
+    <a href="{{ url_for('inventory', base_name=base_name) }}" class="back-link">← {{ base_name }}の在庫に戻る</a>
+  {% endif %}
+
+  <h1>{{ base_name }}の在庫編集（No.{{ no }}）</h1>
+
+  {# ★ ここではエラーだけ表示（成功メッセージは一覧側で表示） #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-area">
+        {% for category, msg in messages %}
+          {% if category == "error" %}
+            <div class="flash-message {{ category }}">{{ msg }}</div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <form method="POST">
+    <!-- どこから来たかを hidden で保持 -->
+    <input type="hidden" name="from_all" value="{{ '1' if from_all else '0' }}">
+
+    <table>
+      <tr>
+        <th>地金</th>
+        <td>
+          <select name="jigan">
+            <option value="">--</option>
+            <option value="Pt900"     {% if row.jigan == "Pt900" %}selected{% endif %}>Pt900</option>
+            <option value="Pt850"     {% if row.jigan == "Pt850" %}selected{% endif %}>Pt850</option>
+            <option value="K18"       {% if row.jigan == "K18" %}selected{% endif %}>K18</option>
+            <option value="K18WG"     {% if row.jigan == "K18WG" %}selected{% endif %}>K18WG</option>
+            <option value="K18PG"     {% if row.jigan == "K18PG" %}selected{% endif %}>K18PG</option>
+            <option value="SV900(Pt)" {% if row.jigan == "SV900(Pt)" %}selected{% endif %}>SV900(Pt)</option>
+          </select>
+        </td>
+      </tr>
+
+      <tr>
+        <th>アイテム</th>
+        <td>
+          <select name="item">
+            <option value="">--</option>
+            <option value="リング"     {% if row.item == "リング" %}selected{% endif %}>リング</option>
+            <option value="ペンダント" {% if row.item == "ペンダント" %}selected{% endif %}>ペンダント</option>
+            <option value="チェーン"   {% if row.item == "チェーン" %}selected{% endif %}>チェーン</option>
+            <option value="その他"     {% if row.item == "その他" %}selected{% endif %}>その他</option>
+          </select>
+        </td>
+      </tr>
+
+      <tr>
+        <th>中石</th>
+        <td>
+          <select name="chuseki">
+            <option value="">--</option>
+            <option value="ダイヤ"   {% if row.chuseki == "ダイヤ" %}selected{% endif %}>ダイヤ</option>
+            <option value="オーバル" {% if row.chuseki == "オーバル" %}selected{% endif %}>オーバル</option>
+            <option value="パール"   {% if row.chuseki == "パール" %}selected{% endif %}>パール</option>
+            <option value="スクエア" {% if row.chuseki == "スクエア" %}selected{% endif %}>スクエア</option>
+            <option value="Free"     {% if row.chuseki == "Free" %}selected{% endif %}>Free</option>
+            <option value="チェーン" {% if row.chuseki == "チェーン" %}selected{% endif %}>チェーン</option>
+          </select>
+        </td>
+      </tr>
+
+      <tr>
+        <th>サイズ/φ</th>
+        <td><input type="text" name="size" value="{{ row.size }}"></td>
+      </tr>
+
+      <tr>
+        <th>品番</th>
+        <td><input type="text" name="hinban" value="{{ row.hinban }}"></td>
+      </tr>
+
+      <tr>
+        <th>上代</th>
+        <td><input type="text" name="uedai" value="{{ row.uedai }}"></td>
+      </tr>
+
+      <tr>
+        <th>暗号化下代</th>
+        <td><input type="text" name="gedai" value="{{ row.gedai }}"></td>
+      </tr>
+
+      <tr>
+        <th>脇石</th>
+        <td><input type="text" name="wakishi" value="{{ row.wakishi }}"></td>
+      </tr>
+
+      <tr>
+        <th>チェーン長</th>
+        <td><input type="text" name="chain_len" value="{{ row.chain_len }}"></td>
+      </tr>
+
+      <tr>
+        <th>摘要</th>
+        <td><input type="text" name="tekiyo" value="{{ row.tekiyo }}"></td>
+      </tr>
+
+      <tr>
+        <th>入力者</th>
+        <td><input type="text" name="input_user" value="{{ row.input_user }}"></td>
+      </tr>
+
+      <tr>
+        <th>入庫日</th>
+        <td>
+          <input
+            type="text"
+            name="nyuko_date"
+            placeholder="YYYY/MM/DD または YYYY-MM-DD"
+            value="{{ row.nyuko_date }}"
+          >
+        </td>
+      </tr>
+    </table>
+
+    <div class="buttons">
+      <button type="submit">この内容で更新する</button>
+      {% if from_all %}
+        <a href="{{ url_for('inventory_all') }}">キャンセル（戻る）</a>
+      {% else %}
+        <a href="{{ url_for('inventory', base_name=base_name) }}">キャンセル（戻る）</a>
+      {% endif %}
+    </div>
+  </form>
+
+</body>
+</html>

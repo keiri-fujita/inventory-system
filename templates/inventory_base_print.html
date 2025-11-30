@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ base_name }} 在庫一覧（印刷用）</title>
+
+  <style>
+    /* --- 共通スタイル --- */
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 11pt;
+      color: #333;
+    }
+
+    .no-print {
+      padding: 10px 15px;
+      background: #f5f5f5;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .no-print button {
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .no-print button:hover {
+      background: #eee;
+    }
+
+    .print-container {
+      padding: 10mm;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      page-break-inside: auto;
+    }
+
+    thead {
+      display: table-header-group; /* 各ページにヘッダーを繰り返す */
+    }
+
+    tfoot {
+      display: table-row-group;
+    }
+
+    tr {
+      page-break-inside: avoid;
+      page-break-after: auto;
+    }
+
+    th, td {
+      border: 1px solid #999;
+      padding: 2px 4px;
+      text-align: left;
+      vertical-align: top;
+      font-size: 10pt;
+    }
+
+    th {
+      background: #f0f0f0;
+    }
+
+    /* 拠点名ヘッダー用 */
+    .table-title-row th {
+      background: #ffffff;
+      font-size: 14pt;
+      text-align: center;
+      padding: 6px 0;
+      border-bottom: 2px solid #666;
+    }
+
+    /* --- 印刷設定 --- */
+    @page {
+      size: A4 portrait; /* A4縦固定 */
+      margin: 15mm 10mm 15mm 10mm;
+
+      /* Chromeなど対応ブラウザならページ番号が出る */
+      @bottom-right {
+        content: counter(page) " / " counter(pages);
+        font-size: 9pt;
+        color: #555;
+      }
+    }
+
+    @media print {
+      .no-print {
+        display: none;
+      }
+
+      body {
+        margin: 0;
+      }
+
+      .print-container {
+        padding: 0;
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- 画面上だけに出す操作ボタン -->
+  <div class="no-print">
+    <span>拠点：{{ base_name }}　在庫一覧（印刷用）</span>
+    &nbsp;&nbsp;
+    <button onclick="window.print()">印刷する</button>
+  </div>
+
+  <div class="print-container">
+    <table>
+      <thead>
+  <tr class="table-title-row">
+    <th colspan="13">{{ base_name }}　在庫一覧</th>
+  </tr>
+  <tr>
+    <th>No.</th>
+    <th>地金</th>
+    <th>アイテム</th>
+    <th>中石</th>
+    <th>サイズ</th>
+    <th>品番</th>
+    <th>上代</th>
+    <th>下代</th>
+    <th>脇石</th>
+    <th>チェーン長</th>
+    <th>摘要</th>
+    <th>入力者</th>
+    <th>入庫日</th>
+  </tr>
+</thead>
+
+      <tbody>
+  {% for row in rows %}
+  <tr>
+    <!-- No. -->
+    <td>{{ row[0] }}</td>
+
+    <!-- 地金〜入庫日（画面のテーブルと同じ部分） -->
+    {% for cell in row[2:14] %}
+      <td>{{ cell }}</td>
+    {% endfor %}
+    </tr>
+  {% endfor %}
+    </tbody>
+    </table>
+  </div>
+
+</body>
+</html>

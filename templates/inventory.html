@@ -6,13 +6,6 @@
 <style>
 body { font-size: 13px; }
 
-/* ✅ 検索バー右横に自然配置 */
-.summary-wrap {
-  position: relative;
-  margin: -35px auto 0 auto; /* ← 上に持ち上げる */
-  width: fit-content;
-}
-
 /* 集計テーブル */
 .summary {
   font-size: 12px;
@@ -20,7 +13,6 @@ body { font-size: 13px; }
   background: #fff;
   line-height: 1.1;
 }
-
 .summary th,
 .summary td {
   border: 1px solid #ccc;
@@ -28,13 +20,11 @@ body { font-size: 13px; }
   text-align: right;
   white-space: nowrap;
 }
-
 .summary thead th {
   text-align: center;
   background-color: #ffe6ea !important;
   font-weight: bold;
 }
-
 .summary tbody tr:hover {
   background: none;
   font-weight: normal;
@@ -46,10 +36,14 @@ table {
   border-collapse: collapse;
   width: 100%;
   font-size: 12px;
-  max-height: 70vh;
+
+  /* ★ 画面の高さからヘッダーぶんを引いた高さまで使う */
+  max-height: calc(100vh - 220px);
+
   overflow-y: auto;
   display: block;
 }
+
 th, td {
   border: 1px solid #ccc;
   padding: 4px 8px;
@@ -77,89 +71,139 @@ tbody tr:hover {
   transition: all .2s ease;
 }
 
-select { font-size: 11px; width: 100%; }
-.sort-icon { margin-left: 4px; font-size: 10px; }
+select {
+  font-size: 11px;
+  width: 100%;
+}
+.sort-icon {
+  margin-left: 4px;
+  font-size: 10px;
+}
+
+
+/* --- ヘッダー部分のレイアウト --- */
+
+/* 集計表＋ボタン全体のコンテナ */
+.header-controls {
+  display: flex;
+  align-items: flex-end;   /* ★ 下端をそろえる */
+  gap: 56px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+/* 左：集計表側の余白調整（上の余白はナシ） */
+.summary-wrap {
+  margin-top: 0;
+}
+
+
+/* 右：ボタン＋検索を上下2段にまとめる */
+.controls-right {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* 各段のボタン並び */
+.controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
 </style>
 </head>
 <body>
 <h1>{{ base_name }}の在庫</h1>
 
-<form method="post">
+<form method="POST" id="inventory-form">
 
-  <!-- ✅ 外枠（全体をflexで左右配置） -->
-<div style="
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-  padding-right: 40px;   /* ← 右端の余白をとる */
-">
+  <!-- ★ 集計表（左）＋ ボタン群（右） -->
+  <div class="header-controls">
 
-  <!-- 左側（出庫ボタン＋検索） -->
-  <div style="display: flex; align-items: center; gap: 12px; margin-top: 50px;">
-  <button type="submit" style="white-space: nowrap;">✅ チェックしたものを出庫する</button>
-  <input
-    type="text"
-    id="searchBox"
-    placeholder="キーワード検索（例：品番・金額など）"
-    style="padding: 4px; font-size: 12px; width: 250px;"
-  />
-  <span id="countLabel" style="font-size: 12px; white-space: nowrap;">表示件数：0 / 総件数：0</span>
-</div>
+    <!-- 左：集計表 -->
+    <div class="summary-wrap">
+      {% set cats = ["リング","ペンダント","チェーン","その他"] %}
+      <table class="summary" aria-label="在庫集計">
+        <thead>
+          <tr>
+            <th>アイテム</th><th>数量</th><th>上代</th><th>下代</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in cats %}
+          <tr>
+            <td>{{ c }}</td>
+            <td>{{ summary[c]["count"] }}</td>
+            <td>{{ summary[c]["上代"] }}</td>
+            <td>{{ summary[c]["下代"] }}</td>
+          </tr>
+          {% endfor %}
+          <tr style="font-weight:700;">
+            <td>合計</td>
+            <td>{{ (totals.count | default(total_count)) }}</td>
+            <td>{{ (totals["上代"] | default(total_上代)) }}</td>
+            <td>{{ (totals["下代"] | default(total_下代)) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
+    <!-- 右：ボタン・検索など（2段） -->
+    <div class="controls-right">
 
-  <!-- 右側（集計表） -->
-  <div class="summary-wrap">
-    {% set cats = ["リング","ペンダント","チェーン","その他"] %}
-    <table class="summary" aria-label="在庫集計">
-      <thead>
-        <tr>
-          <th>アイテム</th><th>数量</th><th>上代</th><th>下代</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for c in cats %}
-        <tr>
-          <td>{{ c }}</td>
-          <td>{{ summary[c]["count"] }}</td>
-          <td>{{ summary[c]["上代"] }}</td>
-          <td>{{ summary[c]["下代"] }}</td>
-        </tr>
-        {% endfor %}
-        <tr style="font-weight:700;">
-          <td>合計</td>
-          <td>{{ (totals.count | default(total_count)) }}</td>
-          <td>{{ (totals["上代"] | default(total_上代)) }}</td>
-          <td>{{ (totals["下代"] | default(total_下代)) }}</td>
-        </tr>
-      </tbody>
-    </table>
+      <!-- 1段目 -->
+      <div class="controls-row">
+        <button type="button" id="btn-checkout">チェックした在庫を出庫する</button>
+        <button type="button" id="btn-uncheck-all">全てのチェックを外す</button>
+
+        <label style="font-size: 12px;">
+          <input type="checkbox" id="chk-show-only-checked">
+          チェック行のみ表示
+        </label>
+      </div>
+
+      <!-- 2段目 -->
+      <div class="controls-row">
+        <button type="button" onclick="resetFilters()">フィルタ解除</button>
+        <button type="button" id="btn-print-filtered" class="print-button">在庫表印刷</button>
+        <button type="button" id="btn-open-tag-dialog">値札印刷</button>
+
+        <input
+          type="text"
+          id="searchBox"
+          placeholder="キーワード検索（例：品番・金額など）"
+          style="padding: 4px; font-size: 12px; width: 250px;"
+        />
+
+        <span id="countLabel" style="font-size: 12px; white-space: nowrap;">
+          表示件数：0 / 総件数：0
+        </span>
+      </div>
+
+    </div>
   </div>
-</div>
 
+  <!-- ▼ この下は今まで通り（メインテーブル） ▼ -->
 
   <table id="inventoryTable">
     <thead>
       <tr>
         <th>出庫</th>
+        <th>編集</th>
         {% for i in range(1,13) %}
-          <th class="sortable" onclick="sortTable({{ i }}, this)">
+          <th class="sortable" onclick="sortTable({{ i+1 }}, this)">
             {{ headers[i] }}<span class="sort-icon">▼</span>
           </th>
         {% endfor %}
       </tr>
       <tr>
-        <th>
-          <select onchange="applyAllFilters()" data-col="0">
-            <option value="">すべて</option>
-            <option value="✔️">✔️</option>
-            <option value="（空）">（空）</option>
-          </select>
-        </th>
+        <th></th>
+        <th></th>
         {% for i in range(1,13) %}
         <th>
-          <select onchange="applyAllFilters()" data-col="{{ i }}">
+          <select onchange="applyFiltersAndSearch()" data-col="{{ i+1 }}">
             <option value="">すべて</option>
           </select>
         </th>
@@ -169,8 +213,11 @@ select { font-size: 11px; width: 100%; }
 
     <tbody>
       {% for i, row in enumerate(rows) %}
-      <tr>
+      <tr data-no="{{ row[0] }}">
         <td><input type="checkbox" name="checkout" value="{{ i }}"></td>
+        <td>
+          <a href="{{ url_for('edit_inventory_row', base_name=base_name, no=row[0]) }}">編集</a>
+        </td>
         {% for cell in row[2:14] %}
           <td>{{ cell }}</td>
         {% endfor %}
@@ -182,112 +229,466 @@ select { font-size: 11px; width: 100%; }
 
 <p><a href="/">← 戻る</a></p>
 
+<!-- ================= JS（検索・フィルタ・ソート・印刷） ================= -->
 <script>
-let inventoryData = [];
+const BASE_NAME = "{{ base_name }}";
 let sortOrder = {};
-let searchTimeout;
+let searchTimeout = null;
 
-window.onload = function () {
-  const table = document.getElementById("inventoryTable");
-  const tbody = table.tBodies[0];
+window.addEventListener('DOMContentLoaded', function () {
+  const table   = document.getElementById("inventoryTable");
+  const tbody   = table.tBodies[0];
   const selects = table.querySelectorAll("thead tr:nth-child(2) select");
 
-  inventoryData = Array.from(tbody.rows).map(row =>
-    Array.from(row.cells).map(cell => cell.innerText.trim())
-  );
-
+  // セレクトの候補値
   selects.forEach(select => {
-    const colIndex = parseInt(select.dataset.col);
-    const values = new Set(inventoryData.map(row => row[colIndex]).filter(v => v));
+    const colIndex = parseInt(select.dataset.col, 10);
+    const values = new Set();
+
+    Array.from(tbody.rows).forEach(tr => {
+      const cell = tr.cells[colIndex];
+      if (!cell) return;
+      const text = cell.textContent.trim();
+      if (text) values.add(text);
+    });
+
     Array.from(values).sort().forEach(v => {
-      const option = document.createElement("option");
-      option.value = v;
-      option.textContent = v;
-      select.appendChild(option);
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      select.appendChild(opt);
     });
   });
 
-  updateCountLabel();
-};
+  // 検索ボックス
+  document.getElementById("searchBox").addEventListener("input", function () {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(applyFiltersAndSearch, 400);
+  });
 
-function searchTable() {
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(() => applyFiltersAndSearch(), 400);
-}
+  // 在庫表印刷
+  const btnPrintFiltered = document.getElementById("btn-print-filtered");
+  if (btnPrintFiltered) {
+    btnPrintFiltered.addEventListener("click", printFilteredInventory);
+  }
 
-function renderTable(rows) {
-  const tbody = document.querySelector("#inventoryTable tbody");
-  tbody.innerHTML = rows.map((row, i) => {
-    const checkbox = `<td><input type="checkbox" name="checkout" value="${i}"></td>`;
-    const cells = row.slice(1, 15).map(c => `<td>${c}</td>`).join("");
-    return `<tr>${checkbox}${cells}</tr>`;
-  }).join("");
+  // 値札印刷ダイアログ
+  const btnTagDialog = document.getElementById("btn-open-tag-dialog");
+  if (btnTagDialog) {
+    btnTagDialog.addEventListener("click", openTagPrintDialog);
+  }
+
+  // チェック行のみ表示
+  const chkShowOnly = document.getElementById("chk-show-only-checked");
+  if (chkShowOnly) {
+    chkShowOnly.addEventListener("change", function() {
+      if (this.checked) {
+        showOnlyCheckedRows();
+      } else {
+        applyFiltersAndSearch();
+      }
+    });
+  }
+
   updateCountLabel();
-}
+});
 
 function updateCountLabel() {
-  const tbody = document.querySelector("#inventoryTable tbody");
-  const total = inventoryData.length;
-  const visible = tbody.querySelectorAll("tr").length;
+  const tbody  = document.querySelector("#inventoryTable tbody");
+  const total  = tbody.rows.length;
+  let visible  = 0;
+  Array.from(tbody.rows).forEach(tr => {
+    if (tr.style.display !== "none") visible++;
+  });
   document.getElementById("countLabel").textContent =
     `表示件数：${visible} / 総件数：${total}`;
 }
 
-// === フィルタ＋検索（AND条件） ===
+function resetFilters() {
+  const table   = document.getElementById("inventoryTable");
+  const tbody   = table.tBodies[0];
+  const selects = table.querySelectorAll("thead tr:nth-child(2) select");
+  const search  = document.getElementById("searchBox");
+  const chkShowOnly = document.getElementById("chk-show-only-checked");
+
+  selects.forEach(sel => sel.value = "");
+  search.value = "";
+  if (chkShowOnly) chkShowOnly.checked = false;
+
+  Array.from(tbody.rows).forEach(tr => tr.style.display = "");
+  updateCountLabel();
+}
+
 function applyFiltersAndSearch() {
-  const selects = document.querySelectorAll("thead tr:nth-child(2) select");
+  const table   = document.getElementById("inventoryTable");
+  const tbody   = table.tBodies[0];
+  const selects = table.querySelectorAll("thead tr:nth-child(2) select");
   const searchValue = document.getElementById("searchBox").value.trim().toLowerCase();
   const searchWords = searchValue.split(/\s+/).filter(w => w);
 
-  let filtered = inventoryData.filter(row => {
-    // 各列のフィルタ適用
-    for (const select of selects) {
-      const col = parseInt(select.dataset.col);
-      const val = select.value.trim().toLowerCase();
-      if (val && !row[col].toLowerCase().includes(val)) return false;
-    }
+  Array.from(tbody.rows).forEach(tr => {
+    let visible = true;
+    const cells = tr.cells;
 
-    // ✅ 検索語のAND条件（カンマ除去対応）
-    if (searchWords.length > 0) {
-      // 各行の文字列をカンマ除去して比較
-      const rowText = row.join(" ").toLowerCase().replace(/,/g, "");
+    selects.forEach(select => {
+      const col = parseInt(select.dataset.col, 10);
+      const val = select.value.trim().toLowerCase();
+      if (!val) return;
+      const cell = cells[col];
+      const text = cell ? cell.textContent.trim().toLowerCase() : "";
+      if (!text.includes(val)) visible = false;
+    });
+
+    if (visible && searchWords.length > 0) {
+      const rowText = Array.from(cells)
+        .map(td => td.textContent.trim().toLowerCase().replace(/,/g, ""))
+        .join(" ");
       for (const w of searchWords) {
-        const cleanWord = w.replace(/,/g, ""); // ← 検索語側もカンマ除去
-        if (!rowText.includes(cleanWord)) return false;
+        const term = w.replace(/,/g, "");
+        if (!rowText.includes(term)) {
+          visible = false;
+          break;
+        }
       }
     }
 
-    return true;
+    tr.style.display = visible ? "" : "none";
   });
 
-  renderTable(filtered);
+  updateCountLabel();
 }
 
-function sortTable(colIndex, headerCell) {
-  if (colIndex === 0) return;
-  sortOrder[colIndex] = !sortOrder[colIndex];
+// 在庫表印刷（絞り込み結果）
+function printFilteredInventory() {
+  const table = document.getElementById("inventoryTable");
+  const tbody = table.tBodies[0];
+  const visibleRows = Array.from(tbody.rows).filter(tr => tr.style.display !== "none");
 
-  inventoryData.sort((a, b) => {
-    const A = a[colIndex].replace(/,/g, "");
-    const B = b[colIndex].replace(/,/g, "");
+  if (visibleRows.length === 0) {
+    alert("表示されている行がありません。");
+    return;
+  }
+
+  const headerCells = Array.from(table.tHead.rows[0].cells).slice(2);
+  const headers = headerCells.map(th => th.textContent.trim());
+
+  const printWin = window.open("", "_blank");
+  const doc = printWin.document;
+
+  doc.open();
+  doc.write(`<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>${BASE_NAME} 在庫一覧</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 11pt;
+    color: #333;
+  }
+  .print-container {
+    padding-top: 10mm;
+    padding-bottom: 10mm;
+    padding-left: 0;
+    padding-right: 0;
+    text-align: center;
+  }
+  table {
+    margin-left: auto;
+    margin-right: auto;
+    width: auto;
+    border-collapse: collapse;
+    page-break-inside: auto;
+  }
+  thead { display: table-header-group; }
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  th, td {
+    border: 1px solid #999;
+    padding: 3px 4px;
+    text-align: left;
+    vertical-align: top;
+    font-size: 10pt;
+    white-space: nowrap;
+    line-height: 1.4;
+  }
+  th { background: #f0f0f0; }
+  .table-title-row th {
+    background: #ffffff;
+    font-size: 14pt;
+    text-align: center;
+    padding: 6px 0;
+    border-bottom: 2px solid #666;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 15mm 6mm 15mm 6mm;
+  }
+
+/* ▼ フォーム内のボタン共通デザイン（ここから追加） */
+#inventory-form button {
+  padding: 4px 10px;
+  background: #eeeeee;
+  border: 1px solid #cccccc;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #333;
+  cursor: pointer;
+}
+
+#inventory-form button:hover {
+  background: #dddddd;
+}
+/* ▲ ここまで追加 */
+
+</style>
+</head>
+
+<body>
+<div class="print-container">
+<table>
+  <thead>
+    <tr class="table-title-row">
+      <th colspan="${headers.length + 1}">${BASE_NAME} 在庫一覧</th>
+    </tr>
+    <tr>
+      <th>No.</th>
+      ${headers.map(h => `<th>${h}</th>`).join("")}
+    </tr>
+  </thead>
+  <tbody>
+`);
+
+  visibleRows.forEach(tr => {
+    const no = tr.dataset.no || "";
+    const cells = Array.from(tr.cells).slice(2).map(td => td.textContent.trim());
+    doc.write("<tr>");
+    doc.write(`<td>${no}</td>`);
+    cells.forEach(text => {
+      doc.write(`<td>${text}</td>`);
+    });
+    doc.write("</tr>");
+  });
+
+  doc.write(`
+  </tbody>
+</table>
+</div>
+</body>
+</html>`);
+  doc.close();
+
+  printWin.focus();
+  printWin.print();
+}
+
+// ソート
+function sortTable(colIndex, headerCell) {
+  if (colIndex === 0 || colIndex === 1) return;
+
+  const table = document.getElementById("inventoryTable");
+  const tbody = table.tBodies[0];
+  const rows  = Array.from(tbody.rows);
+
+  const asc = !(sortOrder[colIndex]);
+  sortOrder[colIndex] = asc;
+
+  rows.sort((a, b) => {
+    const A = (a.cells[colIndex]?.textContent || "").trim().replace(/,/g, "");
+    const B = (b.cells[colIndex]?.textContent || "").trim().replace(/,/g, "");
     const numA = parseFloat(A);
     const numB = parseFloat(B);
 
-    if (!isNaN(numA) && !isNaN(numB))
-      return sortOrder[colIndex] ? numA - numB : numB - numA;
-
-    return sortOrder[colIndex]
-      ? A.localeCompare(B, "ja")
-      : B.localeCompare(A, "ja");
+    if (!isNaN(numA) && !isNaN(numB)) {
+      return asc ? numA - numB : numB - numA;
+    }
+    return asc ? A.localeCompare(B, "ja") : B.localeCompare(A, "ja");
   });
 
+  rows.forEach(tr => tbody.appendChild(tr));
+
   document.querySelectorAll(".sort-icon").forEach(i => i.textContent = "▼");
-  headerCell.querySelector(".sort-icon").textContent = sortOrder[colIndex] ? "▲" : "▼";
+  headerCell.querySelector(".sort-icon").textContent = asc ? "▲" : "▼";
 
   applyFiltersAndSearch();
 }
 
-document.getElementById("searchBox").addEventListener("input", searchTable);
+/* ========= 値札印刷 ========= */
+
+function openTagPrintDialog() {
+  const table = document.getElementById("inventoryTable");
+  const tbody = table.tBodies[0];
+  const checkedCount = tbody.querySelectorAll('input[name="checkout"]:checked').length;
+  const hasChecked = checkedCount > 0;
+
+  Swal.fire({
+    title: '値札印刷',
+    html: `
+      <div style="text-align:left; font-size:13px;">
+        <p style="margin-bottom:6px;">① どの行を値札にしますか？</p>
+        <label style="display:block; margin-left:8px; margin-bottom:4px;">
+          <input type="radio" name="tag-scope" value="checked" ${hasChecked ? 'checked' : 'disabled'}>
+          チェックした行だけ印刷 ${
+            hasChecked ? '（' + checkedCount + '件）' : '（チェックがありません）'
+          }
+        </label>
+        <label style="display:block; margin-left:8px; margin-bottom:10px;">
+          <input type="radio" name="tag-scope" value="filtered" ${hasChecked ? '' : 'checked'}>
+          絞り込み後の表示行すべて
+        </label>
+
+        <p style="margin-bottom:6px;">② 値札の種類を選んでください：</p>
+        <label style="display:block; margin-left:8px;">
+          <input type="radio" name="tag-type" value="proper" checked>
+          プロパー値札
+        </label>
+        <label style="display:block; margin-left:8px;">
+          <input type="radio" name="tag-type" value="event">
+          催事用値札
+        </label>
+      </div>
+    `,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: '印刷する',
+    cancelButtonText: 'キャンセル',
+    width: 480,
+    preConfirm: () => {
+      const scope = document.querySelector('input[name="tag-scope"]:checked');
+      const type  = document.querySelector('input[name="tag-type"]:checked');
+      if (!scope || !type) {
+        Swal.showValidationMessage('対象行と値札の種類を選択してください。');
+        return false;
+      }
+      if (scope.value === 'checked' && !hasChecked) {
+        Swal.showValidationMessage('チェックされた行がありません。');
+        return false;
+      }
+      return { mode: scope.value, tagType: type.value };
+    }
+  }).then((result) => {
+    if (result.isConfirmed && result.value) {
+      openTagPrint(result.value.mode, result.value.tagType);
+    }
+  });
+}
+
+function openTagPrint(mode, tagType) {
+  const baseName = "{{ base_name }}";
+  const table = document.getElementById("inventoryTable");
+  const tbody = table.tBodies[0];
+
+  let nos = [];
+
+  if (mode === "checked") {
+    const checks = tbody.querySelectorAll('input[name="checkout"]:checked');
+    checks.forEach(chk => {
+      const tr = chk.closest("tr");
+      const no = tr.dataset.no;
+      if (no) nos.push(no);
+    });
+  } else if (mode === "filtered") {
+    Array.from(tbody.rows).forEach(tr => {
+      if (tr.style.display === "none") return;
+      const no = tr.dataset.no;
+      if (no) nos.push(no);
+    });
+  }
+
+  if (nos.length === 0) {
+    alert("値札を作成する行が選ばれていません。");
+    return;
+  }
+
+  const params = new URLSearchParams();
+  params.set("type", tagType);
+  params.set("nos", nos.join(","));
+
+  const url = `/print_tags/${encodeURIComponent(baseName)}?` + params.toString();
+  window.open(url, "_blank");
+}
+
+function showOnlyCheckedRows() {
+  const table = document.getElementById("inventoryTable");
+  const tbody = table.tBodies[0];
+
+  Array.from(tbody.rows).forEach(tr => {
+    const chk = tr.querySelector('input[name="checkout"]');
+    if (chk && chk.checked) {
+      tr.style.display = "";
+    } else {
+      tr.style.display = "none";
+    }
+  });
+
+  updateCountLabel();
+}
+
+function clearAllChecks() {
+  const checks = document.querySelectorAll(
+    "#inventoryTable tbody input[name='checkout']"
+  );
+  checks.forEach(chk => {
+    chk.checked = false;
+  });
+
+  const chkShowOnly = document.getElementById("chk-show-only-checked");
+  if (chkShowOnly && chkShowOnly.checked) {
+    chkShowOnly.checked = false;
+    applyFiltersAndSearch();
+  }
+}
 </script>
+
+<!-- SweetAlert2（出庫確認） -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('inventory-form');
+    const btn  = document.getElementById('btn-checkout');
+    const btnUncheck = document.getElementById('btn-uncheck-all');
+    if (!form || !btn) return;
+
+    btn.addEventListener('click', function () {
+      const checked = form.querySelectorAll('input[name="checkout"]:checked');
+      const count = checked.length;
+
+      if (count === 0) {
+        Swal.fire({
+          icon: 'error',
+          title: '出庫する在庫にチェックを付けてください。',
+          confirmButtonColor: '#3085d6'
+        });
+        return;
+      }
+
+      Swal.fire({
+        title: `${count}件を出庫します。よろしいですか？`,
+        text: 'この操作は取り消せません。',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#aaaaaa',
+        confirmButtonText: '出庫する',
+        cancelButtonText: 'キャンセル',
+        reverseButtons: true
+      }).then((result) => {
+        if (result.isConfirmed) {
+          form.submit();
+        }
+      });
+    });
+
+    if (btnUncheck) {
+      btnUncheck.addEventListener('click', clearAllChecks);
+    }
+  });
+</script>
+
 </body>
 </html>

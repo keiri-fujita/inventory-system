@@ -2,37 +2,368 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>在庫を追加</title>
+  <title>
+    {% if fixed_base %}
+      入庫フォーム（{{ fixed_base }}専用）
+    {% else %}
+      入庫フォーム（全拠点共通）
+    {% endif %}
+  </title>
   <style>
-    label {
-      display: block;
-      margin-top: 8px;
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 60px 2em 2em;
     }
-    input, select {
-      padding: 4px;
-      width: 300px;
+
+    .page-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #fff;
+      z-index: 10;
+      padding: 12px 2em 6px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
-    .submit-btn {
+    .page-header h1 {
+      display: inline-block;
+      margin: 0;
+    }
+    .back-link {
+      float: right;
+      font-size: 14px;
+      margin-top: 4px;
+      text-decoration: none;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
       margin-top: 1em;
+      table-layout: fixed;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 4px 6px;
+      text-align: center;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    thead th {
+      position: sticky;
+      top: 60px;
+      background: #eee;
+      z-index: 5;
+    }
+    tbody tr:hover {
+      background: #e5f7ea;
+      font-weight: 500;
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.18);
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    select {
+      width: 100%;
+      box-sizing: border-box;
+      font-size: 12px;
+    }
+
+    .note {
+      margin-top: 0.5em;
+      font-size: 12px;
+      color: #555;
+    }
+
+    .submit-area {
+      margin-top: 1em;
+      text-align: right;
+    }
+    .submit-area button {
+      padding: 6px 16px;
+      font-size: 14px;
+    }
+
+    .error {
+      margin-top: 0.5em;
+      color: #d00;
+      font-size: 13px;
+    }
+
+    .success {
+      margin-top: 0.5em;
+      color: #080;
+      font-size: 13px;
+    }
+
+    .col-gedai-numeric {
+      display: none;
+    }
+
+    .flash-area {
+      margin-bottom: 1em;
+    }
+
+    .flash-message {
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      margin-bottom: 8px;
+    }
+
+    .flash-message.success {
+      background: #e6ffed;
+      border-left: 6px solid #00a65a;
+      color: #007a45;
+    }
+
+    .flash-message.error {
+      background: #ffeaea;
+      border-left: 6px solid #d9534f;
+      color: #b52b27;
     }
   </style>
+
+  <script>
+    // 全角英数字 → 半角英数字
+    function zenkakuToHankaku(str) {
+      return str.replace(/[！-～]/g, function(ch) {
+        return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0);
+      });
+    }
+
+    function setupAutoNormalize() {
+      const inputs = document.querySelectorAll(
+        'input[type="text"]:not([data-allow-zenkaku="true"])'
+      );
+      inputs.forEach(function(inp) {
+        inp.addEventListener('input', function(e) {
+          // 日本語 IME 変換中はさわらない
+          if (e.isComposing) return;
+          const v = inp.value;
+          inp.value = zenkakuToHankaku(v);
+        });
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', setupAutoNormalize);
+  </script>
 </head>
 <body>
-  <h1>在庫を追加（入庫）</h1>
-  <form method="post">
-    <label>拠点:
-      <select name="拠点" required>
-        {% for base in base_names %}
-          <option value="{{ base }}">{{ base }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    {% for h in headers[2:-1] %}  {# 「下代（数値）」は別扱い #}
-      <label>{{ h }}: <input type="text" name="{{ h }}"></label>
-    {% endfor %}
-    <label class="hidden">下代（数値）: <input type="text" name="下代（数値）"></label>
-    <button class="submit-btn" type="submit">✅ 入庫を確定</button>
-  </form>
-  <p><a href="/">← 戻る</a></p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-area">
+      {% for category, msg in messages %}
+        <div class="flash-message {{ category }}">
+          {{ msg }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<div class="page-header">
+  <h1>
+    {% if fixed_base %}
+      入庫フォーム（{{ fixed_base }}専用）
+    {% else %}
+      入庫フォーム（全拠点共通）
+    {% endif %}
+  </h1>
+  <a href="/" class="back-link">← 戻る</a>
+</div>
+
+<form method="POST" id="add-stock-form">
+  <p class="note">
+    {% if fixed_base %}
+      ※ このフォームは <strong>{{ fixed_base }}</strong> 専用です。拠点は自動的に {{ fixed_base }} で保存されます。<br>
+      ※ 必須項目が欠けているとエラーになります。<br>
+      ※ 入庫日を空欄にすると、保存時に本日の日付（YYYY/MM/DD）が自動入力されます。
+    {% else %}
+      ※ 各行ごとに拠点を選んで入力してください。<br>
+      ※ 必須項目が欠けているとエラーになります。<br>
+      ※ 入庫日を空欄にすると、保存時に本日の日付（YYYY/MM/DD）が自動入力されます。
+    {% endif %}
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>拠点</th>
+        <th>地金</th>
+        <th>アイテム</th>
+        <th>中石</th>
+        <th>サイズ/φ</th>
+        <th>品番</th>
+        <th>上代</th>
+        <th>暗号化下代</th>
+        <th>脇石</th>
+        <th>チェーン長</th>
+        <th>摘要</th>
+        <th>入力者</th>
+        <th>入庫日</th>
+        <th class="col-gedai-numeric">下代（数値）</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows_data %}
+        <tr class="add-row">
+          <!-- 拠点 -->
+          <td>
+            {% if fixed_base %}
+              <!-- 拠点固定モード：表示だけ + hidden で送信 -->
+              <span>{{ fixed_base }}</span>
+              <input type="hidden" name="branch[]" value="{{ fixed_base }}">
+            {% else %}
+              <!-- 全拠点フォーム：今まで通りのプルダウン -->
+              <select name="branch[]">
+                <option value="">--</option>
+                {% for base in base_names %}
+                  <option value="{{ base }}"
+                    {% if row.branch == base %}selected{% endif %}>
+                    {{ base }}
+                  </option>
+                {% endfor %}
+              </select>
+            {% endif %}
+          </td>
+
+          <!-- 地金 -->
+          <td>
+            <select name="jigan[]">
+              <option value="">--</option>
+              <option value="Pt900"      {% if row.jigan == "Pt900" %}selected{% endif %}>Pt900</option>
+              <option value="Pt850"      {% if row.jigan == "Pt850" %}selected{% endif %}>Pt850</option>
+              <option value="K18"        {% if row.jigan == "K18" %}selected{% endif %}>K18</option>
+              <option value="K18WG"      {% if row.jigan == "K18WG" %}selected{% endif %}>K18WG</option>
+              <option value="K18PG"      {% if row.jigan == "K18PG" %}selected{% endif %}>K18PG</option>
+              <option value="SV900(Pt)"  {% if row.jigan == "SV900(Pt)" %}selected{% endif %}>SV900(Pt)</option>
+            </select>
+          </td>
+
+          <!-- アイテム -->
+          <td>
+            <select name="item[]">
+              <option value="">--</option>
+              <option value="リング"     {% if row.item == "リング" %}selected{% endif %}>リング</option>
+              <option value="ペンダント" {% if row.item == "ペンダント" %}selected{% endif %}>ペンダント</option>
+              <option value="チェーン"   {% if row.item == "チェーン" %}selected{% endif %}>チェーン</option>
+              <option value="その他"     {% if row.item == "その他" %}selected{% endif %}>その他</option>
+            </select>
+          </td>
+
+          <!-- 中石 -->
+          <td>
+            <select name="chuseki[]">
+              <option value="">--</option>
+              <option value="ダイヤ"   {% if row.chuseki == "ダイヤ" %}selected{% endif %}>ダイヤ</option>
+              <option value="オーバル" {% if row.chuseki == "オーバル" %}selected{% endif %}>オーバル</option>
+              <option value="パール"   {% if row.chuseki == "パール" %}selected{% endif %}>パール</option>
+              <option value="スクエア" {% if row.chuseki == "スクエア" %}selected{% endif %}>スクエア</option>
+              <option value="Free"     {% if row.chuseki == "Free" %}selected{% endif %}>Free</option>
+              <option value="チェーン" {% if row.chuseki == "チェーン" %}selected{% endif %}>チェーン</option>
+            </select>
+          </td>
+
+          <td><input type="text" name="size[]"      value="{{ row.size }}"></td>
+          <td><input type="text" name="hinban[]"    value="{{ row.hinban }}"></td>
+          <td><input type="text" name="uedai[]"     value="{{ row.uedai }}"></td>
+          <td><input type="text" name="gedai[]"     value="{{ row.gedai }}"></td>
+          <td><input type="text" name="wakishi[]"   value="{{ row.wakishi }}"></td>
+          <td><input type="text" name="chain_len[]" value="{{ row.chain_len }}"></td>
+
+          <!-- 摘要・入力者は全角OK -->
+          <td><input type="text" name="tekiyo[]"     value="{{ row.tekiyo }}" data-allow-zenkaku="true"></td>
+          <td><input type="text" name="input_user[]" value="{{ row.input_user }}" data-allow-zenkaku="true"></td>
+
+          <td><input type="date" name="nyuko_date[]" value="{{ row.nyuko_date }}"></td>
+
+          <td class="col-gedai-numeric">
+            <input type="text" name="gedai_numeric[]" value="{{ row.gedai_numeric }}">
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="submit-area">
+    <button type="button" id="btn-add-stock">入庫を実行する</button>
+  </div>
+</form>
+
+<!-- SweetAlert2 読み込み -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- SweetAlert2 読み込み -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('add-stock-form');
+    const btn  = document.getElementById('btn-add-stock');
+    if (!form || !btn) return;
+
+    btn.addEventListener('click', function () {
+      const rows = form.querySelectorAll('tr.add-row');
+      let count = 0;
+
+      rows.forEach(function (row) {
+        // ★ 拠点(branch)は「行が入力されているか」の判定から除外する ★
+        const jigan     = row.querySelector('select[name="jigan[]"]')?.value.trim() || "";
+        const item      = row.querySelector('select[name="item[]"]')?.value.trim() || "";
+        const chuseki   = row.querySelector('select[name="chuseki[]"]')?.value.trim() || "";
+        const size      = row.querySelector('input[name="size[]"]')?.value.trim() || "";
+        const hinban    = row.querySelector('input[name="hinban[]"]')?.value.trim() || "";
+        const uedai     = row.querySelector('input[name="uedai[]"]')?.value.trim() || "";
+        const gedai     = row.querySelector('input[name="gedai[]"]')?.value.trim() || "";
+        const inputUser = row.querySelector('input[name="input_user[]"]')?.value.trim() || "";
+        const nyukoDate = row.querySelector('input[name="nyuko_date[]"]')?.value.trim() || "";
+
+        // サーバ側と同じイメージで、「ほぼ空」の行は数えない
+        if (
+          jigan || item || chuseki ||
+          size || hinban || uedai || gedai ||
+          inputUser || nyukoDate
+        ) {
+          count++;
+        }
+      });
+
+      if (count === 0) {
+        Swal.fire({
+          icon: 'error',
+          title: '入庫する行を入力してください。',
+          confirmButtonColor: '#3085d6'
+        });
+        return;
+      }
+
+      Swal.fire({
+        title: `${count}件を入庫します。よろしいですか？`,
+        text: '入力内容を確認してください。',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',   // 緑
+        cancelButtonColor: '#aaaaaa',    // グレー
+        confirmButtonText: '入庫する',
+        cancelButtonText: 'キャンセル',
+        reverseButtons: true
+      }).then((result) => {
+        if (result.isConfirmed) {
+          form.submit();
+        }
+      });
+    });
+  });
+</script>
+
+
 </body>
 </html>

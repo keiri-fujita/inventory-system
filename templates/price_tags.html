@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>値札印刷</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 10pt;
+      color: #000;
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 10mm;
+    }
+
+    /* A4内にタイル状に並べる（横7枚 × 縦は自動） */
+    .sheet {
+      width: 190mm;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(7, 25mm); /* 1列25mm × 7列 = 175mm */
+      grid-auto-rows: 34mm;                   /* 1行34mmずつ増える */
+      gap: 0;                                 /* 隙間なし */
+    }
+
+    /* 1枚の値札（25mm×34mm） */
+    .tag {
+      width: 25mm;
+      height: 34mm;
+      border: 0.25mm solid #000;   /* 0.25mmの枠。隣同士で実質0.5mmに見える */
+      display: flex;
+      flex-direction: column;
+      font-size: 8pt;
+      line-height: 1.1;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    /* 各段（共通） */
+    .tag-row {
+      display: flex;
+      align-items: center;
+      padding: 0 0.5mm;
+      border-bottom: 0.25mm solid #000;
+    }
+
+    /* 3段目と4段目の間は線なし */
+    .tag-row.row3 {
+      border-bottom: none;
+    }
+
+    /* 行の高さ：4 / 6 / 4 / 3 / 4 / 4 / 9 mm */
+    .tag-row.row1 { height: 4mm; }
+    .tag-row.row2 { height: 6mm; }
+    .tag-row.row3 { height: 4mm; }
+    .tag-row.row4 { height: 3mm; }
+    .tag-row.row5 { height: 4mm; }
+    .tag-row.row6 { height: 4mm; }
+    .tag-row.row7 { height: 9mm; }
+
+    /* 催事用だけ row3=3mm / row4=4mm にして微調整 */
+    .tag.event .tag-row.row3 { height: 3mm; }
+    .tag.event .tag-row.row4 { height: 4mm; }
+
+    /* ===== プロパー用：17mm + 8mm ===== */
+    .tag.proper .block-left {
+      width: 17mm;
+      text-align: left;
+      white-space: nowrap;
+      padding-right: 0.5mm;
+    }
+    .tag.proper .block-right {
+      width: 8mm;
+      text-align: center;
+      white-space: nowrap;
+      padding-left: 0.5mm;
+    }
+
+    /* ===== 催事用：8mm + 9mm + 8mm ===== */
+    .tag.event .block-left {
+      width: 8mm;
+      text-align: center;
+      white-space: nowrap;
+      padding-right: 0.5mm;
+    }
+    .tag.event .block-mid {
+      width: 9mm;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .tag.event .block-right {
+      width: 8mm;
+      text-align: center;
+      white-space: nowrap;
+      padding-left: 0.5mm;
+    }
+    .tag.event .block-wide {
+      width: 17mm;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    /* ===== 地金の色（微調整版） ===== */
+    .metal-pt     { color: #0056cc; font-weight: 700; } /* Pt900 / Pt850：青 */
+    .metal-k18    { color: #cc0000; font-weight: 700; } /* K18：赤 */
+    .metal-sv     { color: #00b000; font-weight: 700; } /* SV900(Pt)：普通の緑 */
+    .metal-k18wg  { color: #66ccff; font-weight: 700; } /* K18WG：水色 */
+    .metal-k18pg  { color: #ff88bb; font-weight: 700; } /* K18PG：ちょい薄ピンク */
+    .metal-other  { color: #9933cc; font-weight: 700; } /* その他：紫 */
+
+    /* サイズの色（K18だけ青、それ以外赤） */
+    .size-red  { color: #cc0000; font-weight: 700; }
+    .size-blue { color: #0056cc; font-weight: 700; }
+
+    .ct-red     { color: #cc0000; font-size: 6pt; }
+    .stone-blue { color: #0056cc; font-size: 6pt; }
+    .small-text { font-size: 6pt; }
+
+    /* 品番（上段：縮小／折り返しなし） */
+    .bold-center {
+      font-weight: 700;
+      text-align: center;
+      width: 100%;
+      white-space: nowrap;
+    }
+
+    /* 品番（下段：折り返しOK） */
+    .bold-center-bottom {
+  font-weight: 700;
+  text-align: center;
+  width: 100%;
+  white-space: normal;
+  word-break: break-all;
+  font-size: 10pt;
+}
+
+    /* 自動縮小対象 */
+    .auto-shrink {
+      display: inline-block;
+      max-width: 100%;
+    }
+
+    /* 催事用の金額フォント */
+    .price-tax  { font-size: 10pt; font-weight: 700; }
+    .price-base { font-size: 8pt;  font-weight: 400; }
+  </style>
+</head>
+<body>
+
+<div class="sheet">
+
+  {# =========================
+     プロパー用値札
+     ========================= #}
+  {% for tag in tags if tag.type == 'proper' %}
+
+    {# 地金クラス決定 #}
+    {% if tag.metal in ['Pt900', 'Pt850'] %}
+      {% set metal_class = 'metal-pt' %}
+    {% elif tag.metal == 'K18' %}
+      {% set metal_class = 'metal-k18' %}
+    {% elif 'SV900' in tag.metal %}
+      {% set metal_class = 'metal-sv' %}
+    {% elif tag.metal == 'K18WG' %}
+      {% set metal_class = 'metal-k18wg' %}
+    {% elif tag.metal == 'K18PG' %}
+      {% set metal_class = 'metal-k18pg' %}
+    {% else %}
+      {% set metal_class = 'metal-other' %}
+    {% endif %}
+
+    {# サイズ色クラス決定（K18だけ青） #}
+    {% if tag.metal == 'K18' %}
+      {% set size_class = 'size-blue' %}
+    {% else %}
+      {% set size_class = 'size-red' %}
+    {% endif %}
+
+    <div class="tag proper">
+
+      <!-- 1行目：地金 / サイズ -->
+      <div class="tag-row row1">
+        <div class="block-left metal {{ metal_class }}">
+          <span class="auto-shrink">{{ tag.metal }}</span>
+        </div>
+        <div class="block-right {{ size_class }}">
+          <span class="auto-shrink">{{ tag.size_code }}</span>
+        </div>
+      </div>
+
+      <!-- 2行目：品番（上段、縮小あり） -->
+      <div class="tag-row row2">
+        <div class="bold-center">
+          <span class="auto-shrink">{{ tag.item_code }}</span>
+        </div>
+      </div>
+
+      <!-- 3・4行目：空白 -->
+      <div class="tag-row row3">
+        <div class="block-left"></div>
+        <div class="block-right"></div>
+      </div>
+      <div class="tag-row row4">
+        <div class="block-left"></div>
+        <div class="block-right"></div>
+      </div>
+
+      <!-- 5行目：暗号化税込下代 -->
+      <div class="tag-row row5">
+        <div class="block-left small-text">{{ tag.price_code_tax_incl }}</div>
+        <div class="block-right"></div>
+      </div>
+
+      <!-- 6行目：暗号化税抜下代 + ct -->
+      <div class="tag-row row6">
+        <div class="block-left stone-blue">{{ tag.price_code_tax_excl }}</div>
+        <div class="block-right ct-red">
+          {% if tag.ct %}{{ tag.ct }}ct{% endif %}
+        </div>
+      </div>
+
+      <!-- 7行目：品番（下段、折り返しOK） -->
+      <div class="tag-row row7">
+        <div class="bold-center-bottom">
+          <span class="auto-shrink">{{ tag.item_code }}</span>
+        </div>
+      </div>
+
+    </div>
+  {% endfor %}
+
+
+
+  {# =========================
+     催事用値札
+     ========================= #}
+  {% for tag in tags if tag.type == 'event' %}
+
+    {# 地金クラス決定 #}
+    {% if tag.metal in ['Pt900', 'Pt850'] %}
+      {% set metal_class = 'metal-pt' %}
+    {% elif tag.metal == 'K18' %}
+      {% set metal_class = 'metal-k18' %}
+    {% elif 'SV900' in tag.metal %}
+      {% set metal_class = 'metal-sv' %}
+    {% elif tag.metal == 'K18WG' %}
+      {% set metal_class = 'metal-k18wg' %}
+    {% elif tag.metal == 'K18PG' %}
+      {% set metal_class = 'metal-k18pg' %}
+    {% else %}
+      {% set metal_class = 'metal-other' %}
+    {% endif %}
+
+    {# サイズ色クラス決定（K18だけ青） #}
+    {% if tag.metal == 'K18' %}
+      {% set size_class = 'size-blue' %}
+    {% else %}
+      {% set size_class = 'size-red' %}
+    {% endif %}
+
+    <div class="tag event">
+
+      <!-- 1行目：地金 / サイズ -->
+      <div class="tag-row row1">
+        <div class="block-left metal {{ metal_class }}">
+          <span class="auto-shrink">{{ tag.metal }}</span>
+        </div>
+        <div class="block-wide">
+          <span class="{{ size_class }} auto-shrink" style="float:right;">
+            {{ tag.size_code }}
+          </span>
+        </div>
+      </div>
+
+      <!-- 2行目：税込上代（縮小あり） -->
+      <div class="tag-row row2">
+        <div class="block-left small-text">（税込）</div>
+        <div class="block-wide">
+          <span class="price-tax auto-shrink">¥{{ tag.price_tax_incl }}</span>
+        </div>
+      </div>
+
+      <!-- 3行目：税抜上代（少し小さめ） -->
+      <div class="tag-row row3">
+        <div class="block-left small-text">本体価格</div>
+        <div class="block-wide price-base">
+          ¥{{ tag.price_tax_excl }}
+        </div>
+      </div>
+
+      <!-- 4行目：空白 -->
+      <div class="tag-row row4">
+        <div class="block-left"></div>
+        <div class="block-wide"></div>
+      </div>
+
+      <!-- 5行目：暗号化税込下代 -->
+      <div class="tag-row row5">
+        <div class="block-left small-text">{{ tag.price_code_tax_incl }}</div>
+        <div class="block-wide small-text"></div>
+      </div>
+
+      <!-- 6行目：暗号化税抜下代 + ct -->
+      <div class="tag-row row6">
+        <div class="block-left stone-blue">{{ tag.price_code_tax_excl }}</div>
+        <div class="block-mid small-text"></div>
+        <div class="block-right ct-red">
+          {% if tag.ct %}{{ tag.ct }}ct{% endif %}
+        </div>
+      </div>
+
+      <!-- 7行目：品番（折り返しOK） -->
+      <div class="tag-row row7">
+        <div class="bold-center-bottom">
+          <span class="auto-shrink">{{ tag.item_code }}</span>
+        </div>
+      </div>
+
+    </div>
+  {% endfor %}
+
+</div>
+
+<script>
+  window.addEventListener("DOMContentLoaded", function () {
+    const targets = document.querySelectorAll(".auto-shrink");
+    targets.forEach(el => {
+      let style = window.getComputedStyle(el);
+      let fontSize = parseFloat(style.fontSize);
+      const minSize = 6;  // 下限
+
+      const parent = el.parentElement;
+      // ★ 幅だけチェックするように変更（高さ条件を外す）
+      while (fontSize > minSize && el.scrollWidth > parent.clientWidth) {
+        fontSize -= 0.5;
+        el.style.fontSize = fontSize + "pt";
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
