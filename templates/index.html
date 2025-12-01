@@ -3,11 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <title>在庫管理ポータル</title>
+
+  <!-- Font Awesome（アイコン用） -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
+
   <style>
     :root {
       --text-main: #111827;
       --text-sub: #6b7280;
-      --tile-radius: 10px;
+      --tile-radius: 14px;
+      --shadow-strong: 0 10px 22px rgba(15, 23, 42, 0.25);
     }
 
     * {
@@ -22,7 +33,7 @@
     }
 
     .page-wrap {
-      max-width: 1100px;
+      max-width: 1120px;
       margin: 24px auto 40px;
       padding: 0 16px;
     }
@@ -44,12 +55,12 @@
       color: var(--text-sub);
     }
 
-    /* タイルグリッド */
+    /* タイルグリッド（大きめ2列×3段） */
     .tile-grid {
       margin-top: 18px;
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
+      grid-template-columns: repeat(2, minmax(260px, 1fr));
+      gap: 14px;
     }
 
     .tile {
@@ -57,11 +68,11 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 12px 14px;
+      padding: 14px 16px 12px;
       border-radius: var(--tile-radius);
       text-decoration: none;
       color: #fff;
-      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2);
+      box-shadow: var(--shadow-strong);
       transition:
         transform 0.12s ease-out,
         box-shadow 0.12s ease-out,
@@ -69,36 +80,36 @@
     }
 
     .tile:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 16px rgba(15, 23, 42, 0.25);
-      filter: brightness(1.03);
+      transform: translateY(-3px);
+      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.32);
+      filter: brightness(1.04);
     }
 
     .tile-header {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       margin-bottom: 4px;
     }
 
     .tile-icon {
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.2);
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.22);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 14px;
+      font-size: 16px;
     }
 
     .tile-title {
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 600;
     }
 
     .tile-desc {
-      font-size: 11px;
+      font-size: 12px;
       opacity: 0.9;
       line-height: 1.4;
       margin-bottom: 6px;
@@ -113,31 +124,35 @@
       opacity: 0.9;
     }
 
-    /* カラー定義（Garoonっぽくビビットに） */
-    .tile-red    { background: #f97373; }  /* 出庫ログなど */
-    .tile-blue   { background: #3b82f6; }  /* 在庫系 */
-    .tile-green  { background: #22c55e; }  /* 入庫系 */
-    .tile-orange { background: #f97316; }  /* 全体メニュー */
-    .tile-purple { background: #8b5cf6; }  /* 設定・マスタ系 */
-    .tile-pink   { background: #ec4899; }  /* お知らせ系など */
-    .tile-teal   { background: #14b8a6; }  /* 全拠点在庫など */
-    .tile-gray   { background: #6b7280; }  /* その他 */
+    /* ビビッドカラー */
+    .tile-green   { background: #22c55e; }  /* 拠点別在庫 / 拠点別入庫 */
+    .tile-teal    { background: #14b8a6; }  /* 全拠点在庫 / 全拠点入庫 */
+    .tile-purple  { background: #8b5cf6; }  /* 入庫ログ */
+    .tile-red     { background: #f97373; }  /* 出庫ログ */
 
-    /* 下の「拠点ショートカット」部分（お好みで） */
+    /* ショートカットセクション */
     .section {
-      margin-top: 24px;
+      margin-top: 26px;
       background: #ffffff;
       border-radius: 12px;
       padding: 12px 14px;
-      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.15);
     }
 
-    .section h2 {
-      margin: 0 0 8px;
+    .section-header-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .section-header-line h2 {
+      margin: 0;
       font-size: 15px;
     }
 
-    .section small {
+    .section-header-line small {
       font-size: 11px;
       color: var(--text-sub);
     }
@@ -146,109 +161,150 @@
       margin-top: 8px;
       display: flex;
       flex-wrap: wrap;
-      gap: 6px 12px;
+      gap: 6px 10px;
       font-size: 13px;
     }
 
     .base-link {
       text-decoration: none;
       color: #1f2937;
-      padding: 3px 6px;
-      border-radius: 6px;
+      padding: 4px 9px;
+      border-radius: 999px;
       background: #f3f4f6;
-      transition: background 0.12s ease-out, transform 0.12s ease-out;
+      border: 1px solid #e5e7eb;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition:
+        background 0.12s ease-out,
+        border-color 0.12s ease-out,
+        transform 0.12s ease-out;
+    }
+
+    .base-link i {
+      font-size: 11px;
+      color: #6b7280;
     }
 
     .base-link:hover {
       background: #e5e7eb;
+      border-color: #d1d5db;
       transform: translateY(-1px);
+    }
+
+    /* フッター */
+    .footer {
+      margin-top: 22px;
+      font-size: 11px;
+      color: var(--text-sub);
+      text-align: right;
+    }
+
+    .footer span {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(248, 250, 252, 0.95);
+      border: 1px dashed #cbd5f5;
     }
 
     /* レスポンシブ */
     @media (max-width: 900px) {
       .tile-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1fr);
       }
     }
 
     @media (max-width: 640px) {
-      .tile-grid {
-        grid-template-columns: minmax(0, 1fr);
+      .page-wrap {
+        margin-top: 20px;
+      }
+      .header-title {
+        font-size: 20px;
       }
     }
   </style>
 </head>
 <body>
   <div class="page-wrap">
+
     <!-- ヘッダー -->
     <header class="header">
       <h1 class="header-title">在庫管理ポータル</h1>
       <p class="header-sub">よく使う社内手続きを色付きタイルでまとめています。</p>
     </header>
 
-    <!-- ビビットなタイルメニュー -->
+    <!-- 大きめタイル：上段＝在庫 -->
     <div class="tile-grid">
-      <!-- 全拠点一括 入庫 -->
-      <a href="{{ url_for('add_stock') }}" class="tile tile-orange">
+      <!-- 拠点別 在庫 -->
+      <a href="#bases-inventory" class="tile tile-green">
         <div>
           <div class="tile-header">
-            <div class="tile-icon">➕</div>
-            <div class="tile-title">全拠点一括 入庫</div>
+            <div class="tile-icon">
+              <i class="fa-solid fa-boxes-stacked"></i>
+            </div>
+            <div class="tile-title">拠点別在庫</div>
           </div>
           <div class="tile-desc">
-            まとめて商品の入庫登録を行います。支給品・仕入れなど、一度に複数拠点分を処理する場合に使用します。
+            各拠点ごとの在庫を確認します。横浜・神戸・大宮など拠点別に一覧表示します。
           </div>
         </div>
         <div class="tile-footer">
-          <span>フォームを開く</span><span>▶</span>
+          <span>拠点を選ぶ</span><i class="fa-solid fa-arrow-right"></i>
         </div>
       </a>
 
-      <!-- 拠点別 入庫メニュー -->
-      <a href="#bases" class="tile tile-green">
-        <div>
-          <div class="tile-header">
-            <div class="tile-icon">🏬</div>
-            <div class="tile-title">拠点別 入庫</div>
-          </div>
-          <div class="tile-desc">
-            横浜・神戸・大宮・泉北・千葉・Aチームなど、拠点ごとの入庫フォームに移動します。
-          </div>
-        </div>
-        <div class="tile-footer">
-          <span>拠点一覧へ</span><span>▶</span>
-        </div>
-      </a>
-
-      <!-- 拠点別 在庫一覧 -->
-      <a href="/inventory/yokohama" class="tile tile-blue">
-        <div>
-          <div class="tile-header">
-            <div class="tile-icon">📦</div>
-            <div class="tile-title">拠点別 在庫一覧</div>
-          </div>
-          <div class="tile-desc">
-            各拠点ごとの在庫を確認します。地金・アイテム・品番などの確認にご利用ください。
-          </div>
-        </div>
-        <div class="tile-footer">
-          <span>横浜店から開く</span><span>▶</span>
-        </div>
-      </a>
-
-      <!-- 全拠点 在庫一覧 -->
+      <!-- 全拠点 在庫 -->
       <a href="/inventory_all" class="tile tile-teal">
         <div>
           <div class="tile-header">
-            <div class="tile-icon">📊</div>
-            <div class="tile-title">全拠点 在庫一覧</div>
+            <div class="tile-icon">
+              <i class="fa-solid fa-warehouse"></i>
+            </div>
+            <div class="tile-title">全拠点在庫</div>
           </div>
           <div class="tile-desc">
-            すべての拠点の在庫を一括で表示します。全体の在庫状況や横断的な確認に使用します。
+            すべての拠点の在庫を一括表示します。全体の在庫状況の確認に使用します。
           </div>
         </div>
         <div class="tile-footer">
-          <span>在庫一覧を見る</span><span>▶</span>
+          <span>在庫一覧を見る</span><i class="fa-solid fa-arrow-right"></i>
+        </div>
+      </a>
+
+      <!-- 拠点別 入庫 -->
+      <a href="#bases-entry" class="tile tile-green">
+        <div>
+          <div class="tile-header">
+            <div class="tile-icon">
+              <i class="fa-solid fa-cart-plus"></i>
+            </div>
+            <div class="tile-title">拠点別入庫</div>
+          </div>
+          <div class="tile-desc">
+            各拠点の入庫フォームに移動します。店舗ごとの入荷登録はこちらから。
+          </div>
+        </div>
+        <div class="tile-footer">
+          <span>拠点を選ぶ</span><i class="fa-solid fa-arrow-right"></i>
+        </div>
+      </a>
+
+      <!-- 全拠点 入庫 -->
+      <a href="{{ url_for('add_stock') }}" class="tile tile-teal">
+        <div>
+          <div class="tile-header">
+            <div class="tile-icon">
+              <i class="fa-solid fa-truck-ramp-box"></i>
+            </div>
+            <div class="tile-title">全拠点入庫</div>
+          </div>
+          <div class="tile-desc">
+            全拠点分をまとめて入庫登録します。支給品や仕入れなど一括処理に利用します。
+          </div>
+        </div>
+        <div class="tile-footer">
+          <span>フォームを開く</span><i class="fa-solid fa-arrow-right"></i>
         </div>
       </a>
 
@@ -256,15 +312,17 @@
       <a href="/log_in" class="tile tile-purple">
         <div>
           <div class="tile-header">
-            <div class="tile-icon">📝</div>
+            <div class="tile-icon">
+              <i class="fa-solid fa-clipboard-list"></i>
+            </div>
             <div class="tile-title">入庫ログ</div>
           </div>
           <div class="tile-desc">
-            いつ・どの拠点に・どの商品が入庫されたかを確認します。棚卸やトレースにご利用ください。
+            いつ・どこに・どの商品が入ったかを確認します。棚卸やトレース用。
           </div>
         </div>
         <div class="tile-footer">
-          <span>履歴を確認</span><span>▶</span>
+          <span>履歴を確認</span><i class="fa-solid fa-arrow-right"></i>
         </div>
       </a>
 
@@ -272,52 +330,58 @@
       <a href="/log_out" class="tile tile-red">
         <div>
           <div class="tile-header">
-            <div class="tile-icon">🚚</div>
+            <div class="tile-icon">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </div>
             <div class="tile-title">出庫ログ</div>
           </div>
           <div class="tile-desc">
-            成約・他拠点への移動など、在庫が出ていく動きを記録した履歴を確認します。
+            成約・移動など、在庫が出ていく動きの履歴を確認します。
           </div>
         </div>
         <div class="tile-footer">
-          <span>履歴を確認</span><span>▶</span>
-        </div>
-      </a>
-
-      <!-- （将来用）設定・マスタ -->
-      <a href="#" class="tile tile-gray">
-        <div>
-          <div class="tile-header">
-            <div class="tile-icon">⚙</div>
-            <div class="tile-title">設定・マスタ</div>
-          </div>
-          <div class="tile-desc">
-            拠点マスタや並べ替えルールなど、管理者向けの設定メニューです。（将来拡張予定）
-          </div>
-        </div>
-        <div class="tile-footer">
-          <span>準備中</span><span>…</span>
+          <span>履歴を確認</span><i class="fa-solid fa-arrow-right"></i>
         </div>
       </a>
     </div>
 
-    <!-- 拠点別ショートカット（リンクで #bases に飛ぶ） -->
-    <section class="section" id="bases">
-      <h2>拠点別 入庫フォーム / 在庫</h2>
-      <small>各拠点の入庫フォームと在庫一覧へのショートカット</small>
+    <!-- 拠点ショートカット：入庫フォーム -->
+    <section class="section" id="bases-entry">
+      <div class="section-header-line">
+        <h2>拠点別 入庫フォーム</h2>
+        <small>各拠点の入庫登録画面へのショートカット</small>
+      </div>
       <div class="base-list">
         {% for base in bases %}
-          <!-- 入庫フォームへのリンク -->
           <a class="base-link" href="{{ url_for('add_stock_for_base', base_slug=base.slug) }}">
-            ➕ {{ base.label_entry }} 入庫
-          </a>
-          <!-- 在庫へのリンク -->
-          <a class="base-link" href="/inventory/{{ base.slug }}">
-            📦 {{ base.label_inventory }} 在庫
+            <i class="fa-solid fa-circle-plus"></i>
+            {{ base.label_entry }} 入庫
           </a>
         {% endfor %}
       </div>
     </section>
+
+    <!-- 拠点ショートカット：在庫一覧 -->
+    <section class="section" id="bases-inventory">
+      <div class="section-header-line">
+        <h2>拠点別 在庫一覧</h2>
+        <small>各拠点の在庫一覧画面へのショートカット</small>
+      </div>
+      <div class="base-list">
+        {% for base in bases %}
+          <a class="base-link" href="/inventory/{{ base.slug }}">
+            <i class="fa-solid fa-box-open"></i>
+            {{ base.label_inventory }} 在庫
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+
+    <!-- フッター -->
+    <footer class="footer">
+      <span>© 2026 YOSHIKI Re. Corporation – Internal Inventory Portal</span>
+    </footer>
+
   </div>
 </body>
 </html>
